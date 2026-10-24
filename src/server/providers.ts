@@ -4,8 +4,8 @@ import type {
   Integration,
   Mutation,
   MutationResult,
-} from "../shared/types";
-import { transact, type Database, type State } from "./database";
+} from "../shared/types.js";
+import { transact, type Database, type State } from "./database.js";
 import {
   applyMutation,
   audit,
@@ -13,8 +13,8 @@ import {
   requireProject,
   requireRecord,
   type ActorContext,
-} from "./operations";
-import { assert, cleanString, digest, emailAddress } from "./security";
+} from "./operations.js";
+import { assert, cleanString, digest, emailAddress } from "./security.js";
 
 export interface ProviderEnvironment {
   COMPOSIO_API_KEY?: string;

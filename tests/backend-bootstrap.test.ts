@@ -10,6 +10,35 @@ type Identity = {
   email_confirmed_at?: string;
   user_metadata: Record<string, string>;
 };
+test("server-managed application origin accepts the deployed frontend and rejects another origin", async () => {
+  const f = await fixture((state) => {
+    state.private.bootstrapOwnerEmail = "owner@example.test";
+    state.private.appOrigin = "https://production.example.test";
+  });
+  try {
+    const session = await f.session("owner");
+    const projectId = session.actor.projectIds[0];
+    const mutate = (origin: string) =>
+      f.app.request("https://backend.example.test/api/mutate", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer owner",
+          Origin: origin,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "create_record",
+          projectId,
+          requestId: crypto.randomUUID(),
+          payload: { kind: "task", title: "Origin fixture" },
+        }),
+      });
+    assert.equal((await mutate("https://production.example.test")).status, 200);
+    assert.equal((await mutate("https://other.example.test")).status, 403);
+  } finally {
+    await f.local.close?.();
+  }
+});
 async function fixture(
   configure?: (state: State) => void,
   extraEnv: Environment = {},

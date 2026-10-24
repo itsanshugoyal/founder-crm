@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { normalizeState, type Database, type State } from "./database";
+import { normalizeState, type Database, type State } from "./database.js";
 export async function createLocalDatabase(
   path = ".local/db",
 ): Promise<Database> {

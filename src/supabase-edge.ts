@@ -22,9 +22,7 @@ const env: Environment = {
     namedKey(runtime.SUPABASE_PUBLISHABLE_KEYS) ?? runtime.SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY:
     namedKey(runtime.SUPABASE_SECRET_KEYS) ?? runtime.SUPABASE_SERVICE_ROLE_KEY,
-  APP_ORIGIN:
-    runtime.APP_ORIGIN ??
-    "https://founder-crm-anshu.itsanshugoyal2.chatgpt.site",
+  APP_ORIGIN: runtime.APP_ORIGIN,
 };
 const { app } = await createApplication({ env, mode: "production" });
 Deno.serve(async (request) => {

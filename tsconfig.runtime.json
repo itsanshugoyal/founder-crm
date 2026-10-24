@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "outDir": ".local/runtime",
+    "rootDir": "."
+  },
+  "include": [
+    "api",
+    "src/server",
+    "src/shared",
+    "src/edge-proxy.ts",
+    "tests/vercel-adapter.test.ts"
+  ]
+}

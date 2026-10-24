@@ -7,8 +7,8 @@ import {
   type Mutation,
   type MutationResult,
   type Project,
-} from "../shared/types";
-import type { State } from "./database";
+} from "../shared/types.js";
+import type { State } from "./database.js";
 import {
   assert,
   cleanString,
@@ -16,7 +16,7 @@ import {
   emailAddress,
   passwordHash,
   randomToken,
-} from "./security";
+} from "./security.js";
 export interface ActorContext {
   member: Member;
   machine: boolean;

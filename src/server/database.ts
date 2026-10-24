@@ -1,9 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Activity, CrmRecord, Member, Project } from "../shared/types";
+import type { Activity, CrmRecord, Member, Project } from "../shared/types.js";
 
 export interface PrivateState {
   /** Server-managed allowlist for the first verified production owner only. */
   bootstrapOwnerEmail?: string;
+  /** Exact public application origin, configured by the deployment administrator. */
+  appOrigin?: string;
   credentials: Record<string, { salt: string; hash: string }>;
   sessions: Record<string, { memberId: string; csrf: string; expires: number }>;
   invites: Record<string, { memberId: string; expires: number }>;

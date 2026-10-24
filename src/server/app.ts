@@ -7,14 +7,14 @@ import type {
   Mutation,
   Readiness,
   Session,
-} from "../shared/types";
+} from "../shared/types.js";
 import {
   normalizeState,
   SupabaseDatabase,
   transact,
   type Database,
   type State,
-} from "./database";
+} from "./database.js";
 import {
   applyMutation,
   audit,
@@ -22,7 +22,7 @@ import {
   requireRecord,
   seedProject,
   type ActorContext,
-} from "./operations";
+} from "./operations.js";
 import {
   assert,
   cleanString,
@@ -33,8 +33,8 @@ import {
   passwordHash,
   randomToken,
   sign,
-} from "./security";
-import { Providers } from "./providers";
+} from "./security.js";
+import { Providers } from "./providers.js";
 
 export interface Environment {
   SUPABASE_URL?: string;
@@ -60,7 +60,7 @@ export interface AppOptions {
 type Variables = { actor: ActorContext; state: State; csrf: string };
 const cookieName = "founder_crm_session";
 export async function createApplication(options: AppOptions = {}) {
-  const env = options.env ?? {};
+  const env = { ...(options.env ?? {}) };
   const mode = options.mode ?? "production";
   let db = options.db;
   let supabase: SupabaseDatabase | undefined;
@@ -72,6 +72,22 @@ export async function createApplication(options: AppOptions = {}) {
     db = supabase;
   }
   if (db instanceof SupabaseDatabase) supabase = db;
+  if (mode === "production" && db && !env.APP_ORIGIN) {
+    const configuredOrigin = (await db.snapshot()).private.appOrigin;
+    if (configuredOrigin) {
+      const origin = new URL(configuredOrigin);
+      assert(
+        origin.protocol === "https:" &&
+          origin.pathname === "/" &&
+          !origin.search &&
+          !origin.hash &&
+          !origin.username &&
+          !origin.password,
+        "Configure an exact HTTPS application origin.",
+      );
+      env.APP_ORIGIN = origin.origin;
+    }
+  }
   const readiness: Readiness = {
     database: !!db,
     auth: mode === "local" ? !!db : !!supabase && !!env.SUPABASE_ANON_KEY,

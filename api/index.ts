@@ -1,6 +1,6 @@
 import { getRequestListener } from "@hono/node-server";
-import { createApplication } from "../src/server/app";
-import { proxyEdge } from "../src/edge-proxy";
+import { createApplication } from "../src/server/app.js";
+import { proxyEdge } from "../src/edge-proxy.js";
 // The official Supabase integration supplies the modern key names.
 const env = {
   ...process.env,
