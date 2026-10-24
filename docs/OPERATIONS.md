@@ -1,0 +1,31 @@
+# Operating Founder CRM
+
+## First setup
+Local: run `npm ci`, then `npm run dev`; use http://127.0.0.1:3460. The API binds loopback port 3461. Create the first owner privately in the setup form. Invite Nahush as an equal owner using a copyable invitation link. Do not paste passwords or invitation tokens into chat. Data lives in ignored `.local/db` (embedded Postgres) and survives restarts.
+
+Production: provide `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `BOOTSTRAP_OWNER_EMAIL` privately. Apply `supabase/migrations/202610240001_crm.sql`. Use an individually verified Supabase account whose email exactly matches the bootstrap owner. Public signup never grants CRM membership. The first authorized sign-in creates the workspace; subsequent members require an owner invitation/membership. The host's private access boundary is separate from application membership.
+
+The current hosted deployment uses Supabase Edge Functions and its managed keys instead of installing a database password or server key in Sites. Build it with `npm run build:edge`; the ignored bundle is `.local/deploy/supabase-edge.js`. Deploy that bundle as the `founder-crm` function using application authentication. Sites needs only `CRM_EDGE_URL`. The private `crm_revision.private.bootstrapOwnerEmail` setting is an alternative to the bootstrap email environment variable; only a database administrator may configure it. The owner creates their password privately through Supabase signup and verifies their email before CRM access is granted.
+
+## Migration and cutover
+`npm run migrate:snapshot` reads the original Airtable credentials privately from `C:/code/DealDock/.env.local` and exports four tables with pagination to ignored `.local/migration/airtable-snapshot.json`. It does not write Airtable. The verified 24 October 2026 export contains 76 leads (44 qualified, 14 hold, 13 dead, five pending), 34 qualified missing drafts, 21 operations, zero calls and zero counters.
+
+After owner setup, import into local Postgres using `npx tsx scripts/migrate-airtable.ts --snapshot-file .local/migration/airtable-snapshot.json --apply-local`. Import to configured production with `--apply-production`. Both preserve raw fields, stable legacy IDs, metadata, notes, drafts and activity. Legacy drafts remain unapproved; source evidence is not reverified merely by import. Repeats skip identical IDs and stop on conflicting originals. The importer validates all 76 contacts transactionally. Review the report and retain the private snapshot as the rollback baseline.
+
+A successful import is not a source-of-truth cutover. Keep Airtable authoritative until the old write path is frozen and the final delta reconciles. No background dual write is installed. Never simply reopen the old CRM after new Postgres writes without reconciling those writes.
+
+## Providers and outreach
+Composio is a connection adapter, not a permission bypass or LLM. Configure a free account, `COMPOSIO_API_KEY`, the relevant auth config and a reviewed pinned tool version privately. Connect each actual account through Settings; verify connection status and account binding. No live connection was created simply by installing skills. Instagram/LinkedIn unsupported cold outreach stays copy-and-open/manual. Do not enable a paid tool, Sandbox model execution, n8n, automated sequences, or automatic send.
+
+Every draft is reviewed as exact recipient/content/account/channel/version. A human sends each message or explicitly confirms a manual send. Copy and approval do not record sending. A response stops no-reply followups. Opt-outs suppress further outreach. Send ceilings are account-wide, shared across projects and cofounders; they are operating limits, not guarantees against platform restrictions. Ambiguous provider outcomes stay uncertain until reconciled.
+
+## Codex and schedules
+Create a scoped MCP token privately in Settings. Configure the local stdio server command `npm run mcp` in this checkout, with `CRM_API_URL`, `CRM_PROJECT_ID`, and `CRM_MCP_TOKEN` supplied privately. Do not paste token values in prompts or commit them. The server can read records, write permitted records/drafts/tasks, and preview changesets. It cannot approve/send, manage access, publish shared documents, or record financial outcomes.
+
+Automation rows are a work queue, not proof that an AI job ran. A local Codex automation must consume the queue while this machine and Codex are available. Recommended schedules are daily 9am and Friday 5pm Asia/Kolkata. Do not report active scheduled processing until the token and runtime are actually configured and one run has produced a receipt.
+
+## Finance and client sharing
+Amounts are stored as integer minor units and displayed in normal currency units. Keep currency totals separate. Issuing an invoice is not sending it and neither means it was paid. Only record verified payments; partial payments and tax must be checked against the invoice. Shared client documents are reviewed snapshots with expiring links and explicit public fields, not access to internal project notes.
+
+## Verification
+`npm run check` runs the TypeScript/production build and HTTP/domain regression suite. `npm run skills:verify` verifies the complete pinned packages; add `--global` to the verifier for global registrations. `npm run build:site` builds a self-contained Worker for the persisted Sites project. The isolated loopback `npx tsx scripts/qa-server.ts` is test-only, uses an in-memory database, and is never a production adapter or an authenticated workspace shortcut.

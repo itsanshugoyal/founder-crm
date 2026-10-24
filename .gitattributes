@@ -1,0 +1,4 @@
+* text=auto
+# Skill snapshots and registrations are checked byte-for-byte against the manifest.
+vendor/** -text
+.agents/** -text

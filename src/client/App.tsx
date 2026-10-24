@@ -1,0 +1,994 @@
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  type ReactNode,
+  type FormEvent,
+} from "react";
+
+import { HouseIcon as House } from "@phosphor-icons/react/dist/csr/House";
+import { UsersIcon as Users } from "@phosphor-icons/react/dist/csr/Users";
+import { KanbanIcon as Kanban } from "@phosphor-icons/react/dist/csr/Kanban";
+import { TrayIcon as Tray } from "@phosphor-icons/react/dist/csr/Tray";
+import { CheckSquareIcon as CheckSquare } from "@phosphor-icons/react/dist/csr/CheckSquare";
+import { ChartBarIcon as ChartBar } from "@phosphor-icons/react/dist/csr/ChartBar";
+import { WalletIcon as Wallet } from "@phosphor-icons/react/dist/csr/Wallet";
+import { BookOpenIcon as BookOpen } from "@phosphor-icons/react/dist/csr/BookOpen";
+import { LightningIcon as Lightning } from "@phosphor-icons/react/dist/csr/Lightning";
+import { GearSixIcon as GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
+import { PlusIcon as Plus } from "@phosphor-icons/react/dist/csr/Plus";
+import { MagnifyingGlassIcon as MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
+import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
+import { ArrowRightIcon as ArrowRight } from "@phosphor-icons/react/dist/csr/ArrowRight";
+import { SignOutIcon as SignOut } from "@phosphor-icons/react/dist/csr/SignOut";
+import { XIcon as X } from "@phosphor-icons/react/dist/csr/X";
+import { BuildingsIcon as Buildings } from "@phosphor-icons/react/dist/csr/Buildings";
+import { ListIcon as List } from "@phosphor-icons/react/dist/csr/List";
+import { ArrowClockwiseIcon as ArrowClockwise } from "@phosphor-icons/react/dist/csr/ArrowClockwise";
+import { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
+import { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
+import { CommandIcon as Command } from "@phosphor-icons/react/dist/csr/Command";
+
+import type {
+  CrmRecord,
+  Fields,
+  MutationResult,
+  RecordKind,
+  Session,
+  WorkspaceData,
+} from "../shared/types";
+
+import {
+  getSession,
+  getWorkspace,
+  mutate,
+  request,
+  productionLogin,
+  productionLogout,
+  productionSignUp,
+} from "./api";
+
+import { active, initials, modules } from "./models";
+
+import { Button, Modal, Confirm, ErrorBox, RecordForm, cn } from "./ui";
+
+import {
+  TodayView,
+  PeopleView,
+  PipelineView,
+  RecordsView,
+  InboxView,
+  ReportsView,
+  SettingsView,
+  KnowledgeView,
+  AutomationView,
+  MoneyView,
+  WorkView,
+  RecordDetail,
+} from "./views";
+
+export type Page =
+  | "today"
+  | "people"
+  | "pipeline"
+  | "inbox"
+  | "work"
+  | "reports"
+  | "money"
+  | "knowledge"
+  | "automation"
+  | "settings";
+
+type CRMContext = {
+  workspace: WorkspaceData;
+  projectId: string;
+  setPage: (page: Page) => void;
+  openCreate: (kind: RecordKind, contactId?: string) => void;
+  openRecord: (r: CrmRecord) => void;
+  editRecord: (r: CrmRecord) => void;
+  act: (
+    action: string,
+    payload: Fields,
+    record?: CrmRecord,
+  ) => Promise<MutationResult>;
+  refresh: () => Promise<void>;
+  toast: (s: string) => void;
+  csrf: string;
+};
+
+const Context = createContext<CRMContext | null>(null);
+
+export function useCRM() {
+  const value = useContext(Context);
+  if (!value) throw Error("CRM is unavailable");
+  return value;
+}
+
+const navigation = [
+  { page: "today", label: "Today", icon: House },
+  { page: "people", label: "People", icon: Users },
+  { page: "pipeline", label: "Pipeline", icon: Kanban },
+  { page: "inbox", label: "Inbox", icon: Tray },
+  { page: "work", label: "Work", icon: CheckSquare },
+  { page: "reports", label: "Reports", icon: ChartBar },
+  { page: "money", label: "Money", icon: Wallet },
+  { page: "knowledge", label: "Knowledge", icon: BookOpen },
+  { page: "automation", label: "Automation", icon: Lightning },
+  { page: "settings", label: "Settings", icon: GearSix },
+] as const;
+
+function Brand() {
+  return (
+    <span className="brand">
+      <span className="brand-mark">
+        <span />
+        <span />
+        <span />
+      </span>
+      founder<span className="brand-dot">.</span>
+    </span>
+  );
+}
+
+function Loading() {
+  return (
+    <div
+      className="loading-shell"
+      aria-label="Loading workspace"
+      aria-busy="true"
+    >
+      <div className="skeleton skeleton-sidebar" />
+      <div className="skeleton-page">
+        <div className="skeleton skeleton-title" />
+        <div className="skeleton skeleton-subtitle" />
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="skeleton skeleton-row" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Auth({
+  session,
+  onReady,
+}: {
+  session: Session;
+  onReady: () => Promise<void>;
+}) {
+  const invite = new URLSearchParams(location.search).get("invite");
+  const [isSetup] = useState(
+    Boolean(session.setupRequired && session.readiness.mode === "local"),
+  );
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [inviteCreate, setInviteCreate] = useState(false);
+  const [ownerCreate, setOwnerCreate] = useState(false);
+  const [verification, setVerification] = useState("");
+  const canCreateOwner = Boolean(
+    (session as Session & { canCreateOwner?: boolean }).canCreateOwner &&
+    session.readiness.mode === "production" &&
+    !invite,
+  );
+  const creatingPassword =
+    isSetup ||
+    ownerCreate ||
+    (invite && (session.readiness.mode === "local" || inviteCreate));
+  const blocked =
+    session.setupRequired && session.readiness.mode === "production";
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      if (invite) {
+        if (session.readiness.mode === "production") {
+          if (inviteCreate) {
+            const ready = await productionSignUp(email, password, name);
+            if (!ready) {
+              setVerification(
+                "Check your email to verify your account, then return to this invitation link and sign in. Your invitation stays in this URL.",
+              );
+              return;
+            }
+          } else await productionLogin(email, password);
+          await request("/api/auth/accept-invite", {
+            method: "POST",
+            body: JSON.stringify({ token: invite, name }),
+          });
+        } else
+          await request("/api/auth/accept-invite", {
+            method: "POST",
+            body: JSON.stringify({ token: invite, name, password }),
+          });
+        history.replaceState(null, "", location.pathname);
+      } else if (session.readiness.mode === "production") {
+        if (ownerCreate && canCreateOwner) {
+          const ready = await productionSignUp(email, password, name);
+          if (!ready) {
+            setVerification(
+              "Check your email to verify your owner account, then return here and sign in with the same email address.",
+            );
+            setOwnerCreate(false);
+            setPassword("");
+            return;
+          }
+        } else await productionLogin(email, password);
+      } else
+        await request(`/api/auth/${isSetup ? "setup" : "login"}`, {
+          method: "POST",
+          body: JSON.stringify({ name, email, password }),
+        });
+      await onReady();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="auth-layout">
+      <section className="auth-story">
+        <Brand />
+        <div className="auth-copy">
+          <span className="eyebrow">A calmer place to build</span>
+          <h1>
+            Good relationships.
+            <br />
+            Clear next steps.
+            <br />
+            <span>Room to focus.</span>
+          </h1>
+          <p>
+            Your people, projects, conversations, and commitments. Together in
+            one considered workspace.
+          </p>
+        </div>
+        <div className="auth-bottom">
+          <span className="small-dot" />
+          Built for the work behind the business.
+        </div>
+      </section>
+      <section className="auth-form-wrap">
+        <div className="auth-form">
+          <span className="eyebrow">YOUR FOUNDER WORKSPACE</span>
+          <h2>
+            {blocked
+              ? "Your workspace is almost ready"
+              : invite
+                ? "Join your team"
+                : ownerCreate
+                  ? "Create your owner account"
+                  : isSetup
+                    ? "Make yourself at home"
+                    : "Welcome back"}
+          </h2>
+          <p>
+            {blocked
+              ? "The production database and authentication need to be connected before you can sign in."
+              : invite
+                ? "Create your account to accept the project invitation."
+                : ownerCreate
+                  ? "Use the email address authorized to own this workspace. Verify it before signing in."
+                  : isSetup
+                    ? "Create the owner account for this local workspace. Your real work starts here."
+                    : "Sign in to pick up where you left off."}
+          </p>
+          {blocked ? (
+            <>
+              <div className="setup-list">
+                {session.readiness.pending.map((item) => (
+                  <div key={item}>
+                    <WarningCircle size={20} />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="form-note">
+                The application is installed. An administrator can connect the
+                required environment settings and redeploy to enable access.
+              </p>
+              <Button onClick={() => location.reload()}>
+                <ArrowClockwise size={17} />
+                Check connection again
+              </Button>
+            </>
+          ) : (
+            <form onSubmit={submit}>
+              <ErrorBox error={error} />
+              {verification && (
+                <div className="inline-notice" role="status">
+                  <CheckCircle size={18} />
+                  {verification}
+                </div>
+              )}
+              {invite && session.readiness.mode === "production" && (
+                <div className="segmented invite-auth-choice">
+                  <button
+                    type="button"
+                    className={!inviteCreate ? "selected" : ""}
+                    onClick={() => setInviteCreate(false)}
+                  >
+                    Sign in to accept
+                  </button>
+                  <button
+                    type="button"
+                    className={inviteCreate ? "selected" : ""}
+                    onClick={() => setInviteCreate(true)}
+                  >
+                    Create an account
+                  </button>
+                </div>
+              )}
+              {canCreateOwner && (
+                <div className="segmented invite-auth-choice">
+                  <button
+                    type="button"
+                    className={!ownerCreate ? "selected" : ""}
+                    aria-pressed={!ownerCreate}
+                    onClick={() => setOwnerCreate(false)}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    type="button"
+                    className={ownerCreate ? "selected" : ""}
+                    aria-pressed={ownerCreate}
+                    onClick={() => setOwnerCreate(true)}
+                  >
+                    Create owner account
+                  </button>
+                </div>
+              )}
+              {(isSetup || invite || ownerCreate) && (
+                <div className="field">
+                  <label htmlFor="auth-name">Your name</label>
+                  <input
+                    id="auth-name"
+                    autoComplete="name"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+              )}
+              {(!invite || session.readiness.mode === "production") && (
+                <div className="field">
+                  <label htmlFor="auth-email">Email address</label>
+                  <input
+                    id="auth-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className="field">
+                <label htmlFor="auth-password">Password</label>
+                <input
+                  id="auth-password"
+                  type="password"
+                  autoComplete={
+                    creatingPassword ? "new-password" : "current-password"
+                  }
+                  minLength={creatingPassword ? 14 : undefined}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                {(isSetup || invite || ownerCreate) && (
+                  <small>
+                    Use at least 14 characters. A memorable passphrase works
+                    well.
+                  </small>
+                )}
+              </div>
+              <Button tone="primary" disabled={busy} className="auth-submit">
+                {busy
+                  ? "Opening your workspace…"
+                  : invite
+                    ? "Accept invitation"
+                    : ownerCreate
+                      ? "Create owner account"
+                      : isSetup
+                        ? "Create workspace"
+                        : "Sign in"}
+                <ArrowRight size={18} />
+              </Button>
+            </form>
+          )}
+          <div className="auth-trust">
+            <CheckCircle size={16} />{" "}
+            {session.readiness.mode === "local"
+              ? "Local workspace · Saved on this computer"
+              : "Protected workspace · Individual accounts"}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+export default function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
+  const [projectId, setProjectId] = useState(
+    () => localStorage.getItem("founder-project") || "",
+  );
+  const [page, setPageState] = useState<Page>("today");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [createKind, setCreateKind] = useState<RecordKind | null>(null);
+  const [editing, setEditing] = useState<CrmRecord | null>(null);
+  const [selected, setSelected] = useState<CrmRecord | null>(null);
+  const [notice, setNotice] = useState("");
+  const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [newProject, setNewProject] = useState(false);
+  const [initialContact, setInitialContact] = useState("");
+  const [formDirty, setFormDirty] = useState(false);
+  const [discard, setDiscard] = useState(false);
+
+  const toast = useCallback((message: string) => {
+    setNotice(message);
+  }, []);
+
+  useEffect(() => {
+    if (!formDirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [formDirty]);
+  useEffect(() => {
+    if (notice) {
+      const timer = setTimeout(() => setNotice(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notice]);
+
+  const load = useCallback(async () => {
+    try {
+      setError("");
+      const s = await getSession();
+      setSession(s);
+      if (s.authenticated) {
+        let w: WorkspaceData;
+        try {
+          w = await getWorkspace(projectId || undefined);
+        } catch {
+          w = await getWorkspace();
+          setProjectId(w.projects[0]?.id || "");
+          localStorage.setItem("founder-project", w.projects[0]?.id || "");
+        }
+        setWorkspace(w);
+        if (!projectId || !w.projects.some((p) => p.id === projectId)) {
+          const id = w.projects[0]?.id || "";
+          setProjectId(id);
+          localStorage.setItem("founder-project", id);
+        }
+      } else setWorkspace(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function refresh() {
+    const w = await getWorkspace(projectId || undefined);
+    setWorkspace(w);
+    setSelected((current) =>
+      current ? w.records.find((r) => r.id === current.id) || null : null,
+    );
+  }
+
+  async function act(action: string, payload: Fields, record?: CrmRecord) {
+    const result = await mutate(
+      session?.csrfToken || "",
+      projectId,
+      action,
+      payload,
+      record?.id,
+      record?.version,
+    );
+    await refresh();
+    toast(result.message || "Saved to your workspace");
+    return result;
+  }
+
+  function setPage(next: Page) {
+    setPageState(next);
+    setMobile(false);
+    setSearchOpen(false);
+  }
+
+  function changeProject(id: string) {
+    setProjectId(id);
+    localStorage.setItem("founder-project", id);
+    setSelected(null);
+    setMobile(false);
+  }
+
+  useEffect(() => {
+    function keydown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, []);
+
+  if (loading) return <Loading />;
+
+  if (!session)
+    return (
+      <div className="fatal">
+        <Brand />
+        <h1>We couldn’t open your workspace</h1>
+        <ErrorBox error={error} />
+        <Button
+          onClick={() => {
+            setLoading(true);
+            void load();
+          }}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+
+  if (!session.authenticated) return <Auth session={session} onReady={load} />;
+
+  if (!workspace)
+    return (
+      <div className="fatal">
+        <Brand />
+        <ErrorBox error={error || "Workspace data is unavailable."} />
+        <Button onClick={() => void load()}>Try again</Button>
+      </div>
+    );
+
+  const records = workspace.records.filter(active);
+  const project = workspace.projects.find((p) => p.id === projectId);
+  const unread = records.filter(
+    (r) =>
+      r.kind === "conversation" &&
+      r.status.toLowerCase().replaceAll("_", " ") === "needs action",
+  ).length;
+  const tasks = records.filter(
+    (r) =>
+      r.kind === "task" &&
+      !["done", "archived"].includes(r.status.toLowerCase()),
+  ).length;
+
+  const context: CRMContext = {
+    workspace,
+    projectId,
+    setPage,
+    openCreate: (kind, id) => {
+      setInitialContact(id || "");
+      setFormDirty(false);
+      setCreateKind(kind);
+    },
+    openRecord: setSelected,
+    editRecord: (record) => {
+      setFormDirty(false);
+      setEditing(record);
+    },
+    act,
+    refresh,
+    toast,
+    csrf: session.csrfToken || "",
+  };
+
+  const titles: Record<Page, string> = {
+    today: "Today",
+    people: "People",
+    pipeline: "Pipeline",
+    inbox: "Inbox",
+    work: "Work",
+    reports: "Reports",
+    money: "Money",
+    knowledge: "Knowledge",
+    automation: "Automation",
+    settings: "Settings",
+  };
+
+  return (
+    <Context.Provider value={context}>
+      <div className="app-shell">
+        <a href="#main" className="skip-link">
+          Skip to main content
+        </a>
+        {mobile && (
+          <button
+            className="mobile-backdrop"
+            onClick={() => setMobile(false)}
+            aria-label="Close navigation"
+          />
+        )}
+        <aside className={cn("sidebar", mobile && "sidebar-open")}>
+          <a
+            className="brand-link"
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              setPage("today");
+            }}
+          >
+            <Brand />
+          </a>
+          <div className="project-picker">
+            <span className="project-symbol">
+              {initials(project?.name || "Workspace")}
+            </span>
+            <div>
+              <label htmlFor="project-switcher">WORKSPACE</label>
+              <select
+                id="project-switcher"
+                value={projectId}
+                onChange={(e) => changeProject(e.target.value)}
+              >
+                {workspace.projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <CaretDown size={13} />
+          </div>
+          <button
+            className="sidebar-search"
+            onClick={() => setSearchOpen(true)}
+          >
+            <MagnifyingGlass size={17} />
+            <span>Search anything</span>
+            <kbd>⌘ K</kbd>
+          </button>
+          <nav aria-label="Main navigation">
+            {navigation.map((item, i) => (
+              <div key={item.page}>
+                {i === 5 && <div className="nav-label">MORE</div>}
+                <button
+                  className={cn("nav-item", page === item.page && "nav-active")}
+                  onClick={() => setPage(item.page)}
+                >
+                  <item.icon
+                    size={19}
+                    weight={page === item.page ? "fill" : "regular"}
+                  />
+                  <span>{item.label}</span>
+                  {item.page === "inbox" && unread > 0 && (
+                    <span className="nav-count">{unread}</span>
+                  )}
+                  {item.page === "work" && tasks > 0 && (
+                    <span className="nav-count">{tasks}</span>
+                  )}
+                </button>
+              </div>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <button className="add-project" onClick={() => setNewProject(true)}>
+              <Plus size={16} />
+              New project
+            </button>
+            <div className="runtime-status">
+              <span className="small-dot" />
+              <span>
+                {workspace.readiness.mode === "local"
+                  ? "Local workspace"
+                  : "Production workspace"}
+              </span>
+            </div>
+            <div className="profile">
+              <div className="avatar avatar-dark">
+                {initials(workspace.actor.name)}
+              </div>
+              <div>
+                <strong>{workspace.actor.name}</strong>
+                <span>{workspace.actor.role}</span>
+              </div>
+              <button
+                className="icon-btn"
+                aria-label="Sign out"
+                onClick={async () => {
+                  try {
+                    await productionLogout();
+                    await request("/api/auth/logout", {
+                      method: "POST",
+                      headers: { "X-CSRF-Token": session.csrfToken || "" },
+                    });
+                    setSession(await getSession());
+                    setWorkspace(null);
+                  } catch (e) {
+                    toast((e as Error).message);
+                  }
+                }}
+              >
+                <SignOut size={18} />
+              </button>
+            </div>
+          </div>
+        </aside>
+        <div className="main-shell">
+          <header className="topbar">
+            <div className="breadcrumb">
+              <button
+                className="icon-btn mobile-menu"
+                onClick={() => setMobile(true)}
+                aria-label="Open navigation"
+              >
+                <List size={22} />
+              </button>
+              <span>{project?.name || "Workspace"}</span>
+              <span className="slash">/</span>
+              <strong>{titles[page]}</strong>
+            </div>
+            <div className="topbar-right">
+              <span className="workspace-private">
+                <span className="small-dot" />
+                Private workspace
+              </span>
+              <Button
+                tone="quiet"
+                onClick={() => void refresh().catch((e) => toast(e.message))}
+                aria-label="Refresh workspace"
+              >
+                <ArrowClockwise size={17} />
+              </Button>
+              <div className="avatar">{initials(workspace.actor.name)}</div>
+            </div>
+          </header>
+          <main id="main" className="main-content" key={projectId}>
+            <ErrorBox error={error} />
+            {page === "today" ? (
+              <TodayView />
+            ) : page === "people" ? (
+              <PeopleView />
+            ) : page === "pipeline" ? (
+              <PipelineView />
+            ) : page === "inbox" ? (
+              <InboxView />
+            ) : page === "work" ? (
+              <WorkView />
+            ) : page === "reports" ? (
+              <ReportsView />
+            ) : page === "money" ? (
+              <MoneyView />
+            ) : page === "knowledge" ? (
+              <KnowledgeView />
+            ) : page === "automation" ? (
+              <AutomationView />
+            ) : (
+              <SettingsView key={projectId} />
+            )}
+          </main>
+          <footer className="app-footer">
+            <span>
+              {project?.name} <span className="footer-divider">/</span> A little
+              more in focus.
+            </span>
+            <span>Human reviewed. Intentionally.</span>
+          </footer>
+        </div>
+      </div>
+      {notice && (
+        <div className="toast" role="status">
+          <CheckCircle size={19} />
+          {notice}
+          <button
+            className="icon-btn"
+            aria-label="Dismiss notification"
+            onClick={() => setNotice("")}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+      <Modal
+        open={Boolean(createKind || editing)}
+        onClose={() => {
+          if (formDirty) setDiscard(true);
+          else {
+            setCreateKind(null);
+            setEditing(null);
+          }
+        }}
+        title={
+          editing
+            ? `Edit ${modules[editing.kind].singular}`
+            : `New ${modules[createKind || "contact"].singular}`
+        }
+        description="Keep the useful details. You can add more later."
+        wide
+      >
+        {(createKind || editing) && (
+          <RecordForm
+            key={editing?.id || createKind}
+            kind={editing?.kind || createKind!}
+            record={editing || undefined}
+            members={workspace.members.filter(
+              (m) => m.projectIds.includes(projectId) || m.role === "owner",
+            )}
+            contacts={records.filter((r) => r.kind === "contact")}
+            integrations={workspace.integrations}
+            initialContactId={initialContact}
+            onDirty={() => setFormDirty(true)}
+            onSave={async (payload) => {
+              await act(
+                editing ? "update_record" : "create_record",
+                payload,
+                editing || undefined,
+              );
+            }}
+            onClose={() => {
+              setFormDirty(false);
+              setInitialContact("");
+              setCreateKind(null);
+              setEditing(null);
+            }}
+          />
+        )}
+      </Modal>
+      <Confirm
+        open={discard}
+        onClose={() => setDiscard(false)}
+        title="Discard unsaved changes?"
+        description="Your changes have not been saved. Confirm to close this form and discard them."
+        onConfirm={() => {
+          setDiscard(false);
+          setFormDirty(false);
+          setCreateKind(null);
+          setEditing(null);
+        }}
+      />
+      {selected && (
+        <RecordDetail record={selected} onClose={() => setSelected(null)} />
+      )}
+      <Modal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        title="Search your workspace"
+        description="Find people, conversations, and the work around them."
+      >
+        <div className="modal-body">
+          <div className="search-input large-search">
+            <MagnifyingGlass size={20} />
+            <input
+              autoFocus
+              aria-label="Search all records"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, company, or detail…"
+            />
+          </div>
+          <div className="search-results">
+            {search.trim() ? (
+              records
+                .filter((r) =>
+                  `${r.title} ${JSON.stringify(r.data)}`
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+                )
+                .slice(0, 30)
+                .map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => {
+                      setSelected(r);
+                      setSearchOpen(false);
+                    }}
+                  >
+                    <span className="record-kind">
+                      {modules[r.kind].singular}
+                    </span>
+                    <strong>{r.title}</strong>
+                    <ArrowRight size={17} />
+                  </button>
+                ))
+            ) : (
+              <p className="muted">
+                Search only includes this project’s records.
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
+      <Modal
+        open={newProject}
+        onClose={() => setNewProject(false)}
+        title="Give your next project a home"
+        description="People, pipelines, and instructions stay separate for each project."
+      >
+        <ProjectForm
+          onClose={() => setNewProject(false)}
+          onSave={async (payload) => {
+            const result = await act("create_project", payload);
+            if (result.project) changeProject(result.project.id);
+            setNewProject(false);
+          }}
+        />
+      </Modal>
+    </Context.Provider>
+  );
+}
+
+function ProjectForm({
+  onSave,
+  onClose,
+}: {
+  onSave: (p: Fields) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        try {
+          await onSave({ name, description });
+        } catch (e) {
+          setError((e as Error).message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <div className="modal-body">
+        <ErrorBox error={error} />
+        <div className="field">
+          <label htmlFor="project-name">Project name</label>
+          <input
+            id="project-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="project-description">What are you building?</label>
+          <textarea
+            id="project-description"
+            rows={4}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="form-footer">
+        <Button type="button" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button tone="primary" disabled={busy}>
+          {busy ? "Creating…" : "Create project"}
+          <ArrowRight size={16} />
+        </Button>
+      </div>
+    </form>
+  );
+}

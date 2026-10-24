@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env*
+!.env.example
+.local/
+.wrangler/
+.vercel/
+coverage/
+test-results/
+playwright-report/
+*.log
+*.tgz
+*.zip
+vendor/**/.git
+vendor/**/.env*
+vendor/**/node_modules/
+src/generated/
