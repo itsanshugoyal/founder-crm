@@ -36,6 +36,8 @@ npm run build:site
 
 Tests run serially to keep embedded Postgres memory use bounded. `build:site` packages the UI and Hono API as a self-contained Worker. `.openai/hosting.json` binds this checkout to its existing private Sites project; do not create a duplicate site. Supabase is the production database/auth target. Configure secrets privately using the hosting provider, never Git or chat. Production fails closed until the database, migration and authentication are configured.
 
+On Windows machines with little available commit memory, `npm run test:low-memory` runs the same full suite with explicit collection of completed PGlite fixtures. This does not skip tests. Owner-verification findings and the redirect configuration are recorded in [the Auth review](docs/AUTH-REVIEW.md).
+
 Vercel is the requested hosting target at https://founder-crm-rouge.vercel.app, on the owner's existing Hobby account without a billing change. Deployment configuration and plan limitations are in [Vercel setup](docs/VERCEL.md). An earlier private deployment exists at https://founder-crm-anshu.itsanshugoyal2.chatgpt.site; it is not the requested release or proof of a completed data cutover. Current checks and external setup are recorded in [release status](docs/RELEASE-STATUS.md).
 
 ## Safety rules
