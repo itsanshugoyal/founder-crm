@@ -8,6 +8,7 @@
     "dev:ui": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "test": "tsx --test --test-concurrency=1 tests/*.test.ts",
+    "test:low-memory": "node --expose-gc --import tsx --import ./scripts/test-cleanup.mjs --test --test-concurrency=1 tests/*.test.ts",
     "test:runtime": "tsc -p tsconfig.runtime.json && node --test .local/runtime/tests/vercel-adapter.test.js",
     "start": "tsx scripts/dev.ts --production",
     "mcp": "tsx scripts/mcp.ts",

@@ -53,6 +53,10 @@ import {
 } from "./api";
 
 import { active, initials, modules } from "./models";
+import { verificationCallbackError } from "../shared/auth-redirect";
+
+// Capture safe guidance before the Auth client consumes and clears callback fragments.
+const initialVerificationError = verificationCallbackError(location.hash);
 
 import { Button, Modal, Confirm, ErrorBox, RecordForm, cn } from "./ui";
 
@@ -172,7 +176,7 @@ function Auth({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialVerificationError);
   const [inviteCreate, setInviteCreate] = useState(false);
   const [ownerCreate, setOwnerCreate] = useState(false);
   const [verification, setVerification] = useState("");

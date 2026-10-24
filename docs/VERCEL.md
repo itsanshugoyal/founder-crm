@@ -34,3 +34,9 @@ Deployment configuration and remaining setup:
 - [Hono on Vercel](https://hono.dev/docs/getting-started/vercel)
 
 The Marketplace integration is not installed. A deployment marked Ready is not accepted as functional until its API bodies, authentication boundary and browser state are verified.
+
+## Email confirmation redirects
+
+In Team Seven's Authentication > URL Configuration, set Site URL to `https://founder-crm-rouge.vercel.app` and allow the exact redirect `https://founder-crm-rouge.vercel.app/`. Add the narrowly scoped invitation pattern `https://founder-crm-rouge.vercel.app/?invite=*` when using email-confirmed invitations. Do not allow every Vercel preview hostname. The production client builds return URLs from `CRM_APP_ORIGIN` in `src/shared/auth-redirect.ts`; only the invitation parameter is preserved, never fragments or arbitrary return destinations. Update that constant and the Auth settings together if the production domain changes.
+
+A confirmation that reaches localhost can still have verified the email before redirecting. Check verified state before asking the owner to register again. Once verified, they should sign in at the Vercel URL using their existing password. A pasted confirmation callback contains credentials: do not open, log or reuse it; revoke the affected sessions and have the owner sign in privately.

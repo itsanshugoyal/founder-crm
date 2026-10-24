@@ -5,6 +5,7 @@ import type {
   WorkspaceData,
 } from "../shared/types";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { verificationRedirectUrl } from "../shared/auth-redirect";
 let supabase: SupabaseClient | undefined;
 export function configureAuth(session: Session) {
   if (session.supabaseUrl && session.supabaseAnonKey && !supabase)
@@ -24,7 +25,10 @@ export async function productionSignUp(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name }, emailRedirectTo: location.href },
+    options: {
+      data: { name },
+      emailRedirectTo: verificationRedirectUrl(location.href),
+    },
   });
   if (error) throw error;
   return Boolean(data.session);
