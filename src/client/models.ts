@@ -40,7 +40,7 @@ export const modules: Record<RecordKind, Module> = {
   contact: {
     label: "People",
     singular: "person",
-    description: "Relationships with context. Keep the next step close.",
+    description: "Contacts, qualification evidence, ownership, and follow-ups.",
     statuses: [
       "New",
       "Researching",
@@ -97,7 +97,7 @@ export const modules: Record<RecordKind, Module> = {
   company: {
     label: "Companies",
     singular: "company",
-    description: "The organizations behind your relationships.",
+    description: "Companies linked to project contacts and opportunities.",
     statuses: ["Researching", "Qualified", "Active", "Inactive"],
     fields: [
       { key: "website", label: "Website", type: "url" },
@@ -110,7 +110,7 @@ export const modules: Record<RecordKind, Module> = {
   opportunity: {
     label: "Pipeline",
     singular: "opportunity",
-    description: "Move every conversation toward a clear next decision.",
+    description: "Opportunities, pipeline stages, value, and next actions.",
     statuses: OPPORTUNITY_STAGES,
     fields: [
       {
@@ -131,7 +131,7 @@ export const modules: Record<RecordKind, Module> = {
   task: {
     label: "Tasks",
     singular: "task",
-    description: "A useful place for everything you said you would do.",
+    description: "Assigned tasks, priorities, statuses, and due dates.",
     statuses: ["To do", "In progress", "Waiting", "Done"],
     fields: [
       {
@@ -148,7 +148,7 @@ export const modules: Record<RecordKind, Module> = {
   content: {
     label: "Content",
     singular: "content item",
-    description: "Plan, review, and track the work behind each publication.",
+    description: "Plan content, review drafts, and record published links.",
     statuses: ["Idea", "Draft", "Review", "Ready", "Published"],
     fields: [
       {
@@ -179,7 +179,8 @@ export const modules: Record<RecordKind, Module> = {
   campaign: {
     label: "Campaigns",
     singular: "campaign",
-    description: "Give each campaign a goal, owner, and measurable outcome.",
+    description:
+      "Campaign goals, audiences, dates, budgets, and observed results.",
     statuses: ["Planning", "Active", "Paused", "Completed"],
     fields: [
       { key: "goal", label: "Campaign goal", required: true },
@@ -198,7 +199,8 @@ export const modules: Record<RecordKind, Module> = {
   meeting: {
     label: "Meetings",
     singular: "meeting",
-    description: "Prepare well, capture decisions, and follow through.",
+    description:
+      "Meeting schedules, attendees, agendas, decisions, and follow-ups.",
     statuses: ["Scheduled", "Completed", "Cancelled"],
     fields: [
       { key: "startsAt", label: "Meeting time", type: "datetime-local" },
@@ -224,7 +226,8 @@ export const modules: Record<RecordKind, Module> = {
   onboarding: {
     label: "Onboarding",
     singular: "onboarding plan",
-    description: "Help every new partner reach their first useful outcome.",
+    description:
+      "Client milestones, success criteria, blockers, and verified completion.",
     statuses: ["Not started", "In progress", "Blocked", "Completed"],
     fields: [
       {
@@ -247,7 +250,8 @@ export const modules: Record<RecordKind, Module> = {
   invoice: {
     label: "Invoices",
     singular: "invoice",
-    description: "Accurate invoices, with an explicit issue and payment trail.",
+    description:
+      "Invoice drafts, issuance, manual delivery, and payment records.",
     statuses: ["Draft"],
     fields: [
       { key: "invoiceNumber", label: "Invoice number", required: true },
@@ -268,7 +272,8 @@ export const modules: Record<RecordKind, Module> = {
   expense: {
     label: "Expenses",
     singular: "expense",
-    description: "See what your project costs, in its original currency.",
+    description:
+      "Project expenses, categories, receipts, and original currencies.",
     statuses: ["Recorded", "Pending", "Reimbursed", "Cancelled"],
     fields: [
       {
@@ -302,8 +307,7 @@ export const modules: Record<RecordKind, Module> = {
   payment: {
     label: "Payments",
     singular: "payment",
-    description:
-      "Record confirmed money movement and reconcile it to an invoice.",
+    description: "Verified payments and the invoices they settle.",
     statuses: ["Received", "Pending", "Refunded", "Failed"],
     fields: [
       {
@@ -330,7 +334,7 @@ export const modules: Record<RecordKind, Module> = {
   proposal: {
     label: "Proposals",
     singular: "proposal",
-    description: "Document the scope, price, and next decision.",
+    description: "Proposal scope, deliverables, pricing, terms, and decisions.",
     statuses: ["Draft", "Review", "Shared", "Accepted", "Declined"],
     fields: [
       { key: "customerName", label: "Prepared for" },
@@ -352,7 +356,7 @@ export const modules: Record<RecordKind, Module> = {
   knowledge: {
     label: "Knowledge",
     singular: "document",
-    description: "Your project’s working memory. Make decisions easy to find.",
+    description: "Project instructions, research, processes, and decisions.",
     statuses: ["Current", "Review needed", "Superseded"],
     fields: [
       {
@@ -377,7 +381,7 @@ export const modules: Record<RecordKind, Module> = {
   automation: {
     label: "Automation",
     singular: "Codex job",
-    description: "Queue focused work for your local Codex runtime.",
+    description: "Codex job instructions, execution status, and receipts.",
     statuses: [
       "Queued",
       "Running",
@@ -423,7 +427,7 @@ export const modules: Record<RecordKind, Module> = {
   draft: {
     label: "Drafts",
     singular: "draft",
-    description: "Review the exact words before each individual send.",
+    description: "Prepare messages for exact approval and individual sending.",
     statuses: ["Draft", "Needs review", "Rejected"],
     fields: [
       {
@@ -443,7 +447,8 @@ export const modules: Record<RecordKind, Module> = {
   conversation: {
     label: "Conversations",
     singular: "conversation",
-    description: "Replies, context, and the next human action.",
+    description:
+      "Conversation ownership, account context, status, and next actions.",
     statuses: ["Open", "Awaiting reply", "Needs action", "Closed"],
     fields: [
       {
@@ -480,7 +485,7 @@ export const modules: Record<RecordKind, Module> = {
   promise: {
     label: "Promises",
     singular: "promise",
-    description: "Commitments made to the people you work with.",
+    description: "Commitments, assigned owners, and due dates.",
     statuses: ["Open", "Fulfilled", "Cancelled"],
     fields: [
       {
@@ -496,7 +501,8 @@ export const modules: Record<RecordKind, Module> = {
   experiment: {
     label: "Experiments",
     singular: "experiment",
-    description: "Keep a hypothesis separate from a verified result.",
+    description:
+      "Experiment hypotheses, cohorts, budgets, and observed outcomes.",
     statuses: ["Proposed", "Running", "Review", "Completed", "Stopped"],
     fields: [
       {

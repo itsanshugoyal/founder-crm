@@ -45,18 +45,31 @@ export function Button({
 }
 
 export function Badge({ children }: { children: ReactNode }) {
-  const str = String(children);
+  const status = String(children).trim().toLowerCase().replaceAll("_", " ");
+  const good = [
+    "done",
+    "completed",
+    "paid",
+    "approved",
+    "qualified",
+    "paying",
+    "connected",
+    "current",
+    "received",
+    "active",
+    "pilot active",
+  ].includes(status);
+  const warn = [
+    "overdue",
+    "failed",
+    "lost",
+    "blocked",
+    "rejected",
+    "not a fit",
+    "uncertain",
+  ].includes(status);
   return (
-    <span
-      className={cn(
-        "badge",
-        /Done|Completed|Paid|Approved|Qualified|Paying|Connected|Current|Received|Active/.test(
-          str,
-        ) && "badge-good",
-        /Overdue|Failed|Lost|Blocked|Rejected|Not a fit/.test(str) &&
-          "badge-warn",
-      )}
-    >
+    <span className={cn("badge", good && "badge-good", warn && "badge-warn")}>
       {children}
     </span>
   );

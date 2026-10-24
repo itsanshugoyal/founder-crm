@@ -195,16 +195,19 @@ function MiniList({ records, empty }: { records: CrmRecord[]; empty: string }) {
 }
 
 export function TodayView() {
-  const { workspace, openCreate, setPage, openRecord } = useCRM();
+  const { workspace, projectId, openCreate, setPage, openRecord } = useCRM();
   const records = useRecords();
+  const [queue, setQueue] = useState("tasks");
+  const [onlyMine, setOnlyMine] = useState(false);
+  const [dueOnly, setDueOnly] = useState(false);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
   const tasks = records.filter(
     (r) => ["task", "promise", "onboarding"].includes(r.kind) && !isComplete(r),
   );
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  const due = tasks.filter((r) => r.dueAt && new Date(r.dueAt) <= today);
+  const due = tasks.filter((r) => r.dueAt && new Date(r.dueAt) <= endOfDay);
   const replies = records.filter(
-    (r) => r.kind === "conversation" && statusIs(r, "Needs action"),
+    (r) => r.kind === "conversation" && statusIs(r, "Open", "Needs action"),
   );
   const drafts = records.filter(
     (r) => r.kind === "draft" && statusIs(r, "Draft", "Needs review"),
@@ -212,132 +215,327 @@ export function TodayView() {
   const opportunities = records.filter(
     (r) => r.kind === "opportunity" && !statusIs(r, "Lost", "Paying"),
   );
-  const meetings = records.filter(
-    (r) => r.kind === "meeting" && !isComplete(r),
-  );
-  const name = workspace.actor.name.split(" ")[0];
+  const meetings = records
+    .filter((r) => r.kind === "meeting" && !isComplete(r))
+    .sort((a, b) =>
+      (text(a, "startsAt") || a.dueAt || "").localeCompare(
+        text(b, "startsAt") || b.dueAt || "",
+      ),
+    );
+  const queues = [
+    { id: "tasks", name: "Open work", count: tasks.length, icon: CheckCircle },
+    { id: "replies", name: "Needs a reply", count: replies.length, icon: Tray },
+    {
+      id: "drafts",
+      name: "Draft review",
+      count: drafts.length,
+      icon: NotePencil,
+    },
+    {
+      id: "meetings",
+      name: "Meetings",
+      count: meetings.length,
+      icon: CalendarBlank,
+    },
+  ];
+  const source =
+    queue === "replies"
+      ? replies
+      : queue === "drafts"
+        ? drafts
+        : queue === "meetings"
+          ? meetings
+          : tasks;
+  const shown = source
+    .filter(
+      (r) =>
+        (!onlyMine ||
+          r.ownerId === workspace.actor.id ||
+          (Array.isArray(r.data.collaboratorIds) &&
+            r.data.collaboratorIds.includes(workspace.actor.id))) &&
+        (!dueOnly || (r.dueAt && new Date(r.dueAt) <= endOfDay)),
+    )
+    .sort((a, b) => (a.dueAt || "9999").localeCompare(b.dueAt || "9999"));
+  const project = workspace.projects.find((p) => p.id === projectId);
   return (
     <>
-      <PageHead
-        eyebrow={new Date()
-          .toLocaleDateString(undefined, {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })
-          .toUpperCase()}
-        title={`A clear day ahead, ${name}.`}
-        description="The conversations to move forward. The promises to keep."
-        action="Add task"
-        onAction={() => openCreate("task")}
-      />
-      <div className="today-summary">
-        <button onClick={() => setPage("inbox")}>
-          <Tray size={21} />
+      <div className="today-page-head">
+        <div className="date-index">
           <span>
-            <strong>{replies.length}</strong>
-            <span>need a reply</span>
+            {new Date()
+              .toLocaleDateString(undefined, { month: "short" })
+              .toUpperCase()}
           </span>
-          <ArrowUpRight size={17} />
-        </button>
-        <button onClick={() => setPage("work")}>
-          <CheckCircle size={21} />
+          <strong>{new Date().getDate().toString().padStart(2, "0")}</strong>
           <span>
-            <strong>{due.length}</strong>
-            <span>due by today</span>
+            {new Date()
+              .toLocaleDateString(undefined, { weekday: "short" })
+              .toUpperCase()}
           </span>
-          <ArrowUpRight size={17} />
-        </button>
+        </div>
+        <div className="today-heading-copy">
+          <span className="eyebrow">
+            {project?.name || "Current project"} / ATTENTION INDEX
+          </span>
+          <h1>Today</h1>
+          <p>Open work, conversations, and decisions.</p>
+        </div>
+        <div className="head-actions">
+          <Button onClick={() => openCreate("contact")}>
+            <Users size={16} />
+            Add person
+          </Button>
+          <Button tone="primary" onClick={() => openCreate("task")}>
+            <Plus size={16} />
+            New task
+          </Button>
+        </div>
+      </div>
+      <div className="attention-strip">
+        <span>
+          <Clock size={16} />
+          <strong>{due.length}</strong> commitments due by today
+        </span>
+        <span>
+          <Kanban size={16} />
+          <strong>{opportunities.length}</strong> open opportunities
+        </span>
         <button onClick={() => setPage("pipeline")}>
-          <Kanban size={21} />
-          <span>
-            <strong>{opportunities.length}</strong>
-            <span>open opportunities</span>
-          </span>
-          <ArrowUpRight size={17} />
-        </button>
-        <button onClick={() => setPage("inbox")}>
-          <NotePencil size={21} />
-          <span>
-            <strong>{drafts.length}</strong>
-            <span>drafts to review</span>
-          </span>
-          <ArrowUpRight size={17} />
+          View pipeline
+          <ArrowRight size={14} />
         </button>
       </div>
       <div className="today-columns">
-        <div className="today-main">
-          <section className="panel focus-panel">
-            <SectionHead
-              title="Your next moves"
-              count={(due.length ? due : tasks).length}
-              action="View all work"
-              onAction={() => setPage("work")}
+        <section className="panel today-queue">
+          <div className="queue-tabs" role="group" aria-label="Today queues">
+            {queues.map((item) => (
+              <button
+                key={item.id}
+                className={cn(queue === item.id && "queue-active")}
+                aria-pressed={queue === item.id}
+                onClick={() => {
+                  setQueue(item.id);
+                  setDueOnly(false);
+                }}
+              >
+                <item.icon size={16} />
+                {item.name}
+                <span>{item.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="queue-toolbar">
+            <span>
+              {shown.length} {shown.length === 1 ? "record" : "records"}
+            </span>
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={onlyMine}
+                  onChange={(e) => setOnlyMine(e.target.checked)}
+                />
+                Assigned to me
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={dueOnly}
+                  onChange={(e) => setDueOnly(e.target.checked)}
+                />
+                Due by today
+              </label>
+            </div>
+          </div>
+          {shown.length ? (
+            <div className="table-scroll">
+              <table className="attention-table">
+                <thead>
+                  <tr>
+                    <th>Record</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th>Due</th>
+                    <th aria-label="Open record" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {shown.slice(0, 12).map((r) => (
+                    <tr key={r.id}>
+                      <td>
+                        <button
+                          className="queue-record"
+                          onClick={() => openRecord(r)}
+                        >
+                          <span
+                            className={cn(
+                              "queue-record-icon",
+                              queue === "replies" && "queue-record-reply",
+                            )}
+                          >
+                            {queue === "drafts" ? (
+                              <NotePencil size={17} />
+                            ) : queue === "meetings" ? (
+                              <CalendarBlank size={17} />
+                            ) : queue === "replies" ? (
+                              <Tray size={17} />
+                            ) : (
+                              <CheckCircle size={17} />
+                            )}
+                          </span>
+                          <span>
+                            <strong>{r.title}</strong>
+                            <small>
+                              {modules[r.kind].singular}
+                              {r.contactId
+                                ? ` · ${records.find((c) => c.id === r.contactId)?.title || "Linked person"}`
+                                : ""}
+                            </small>
+                          </span>
+                        </button>
+                      </td>
+                      <td>
+                        <Owner id={r.ownerId} record={r} />
+                      </td>
+                      <td>
+                        <Badge>{label(r.status)}</Badge>
+                      </td>
+                      <td>
+                        <span
+                          className={cn(
+                            "date-label",
+                            r.dueAt &&
+                              new Date(r.dueAt) < new Date() &&
+                              "date-overdue",
+                          )}
+                        >
+                          {dateLabel(r.dueAt)}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="icon-btn"
+                          aria-label={`Open ${r.title}`}
+                          onClick={() => openRecord(r)}
+                        >
+                          <ArrowUpRight size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty
+              title={
+                source.length
+                  ? "No records match these filters"
+                  : queue === "drafts"
+                    ? "No drafts to review"
+                    : queue === "replies"
+                      ? "No conversations need a reply"
+                      : queue === "meetings"
+                        ? "No meetings scheduled"
+                        : "No open work"
+              }
+              description={
+                source.length
+                  ? "Clear the assignment or date filter to see other records."
+                  : queue === "drafts"
+                    ? "Create a draft linked to a person. Approval and sending remain separate actions."
+                    : "Create a record to add it to this project."
+              }
+              action={
+                source.length
+                  ? "Clear filters"
+                  : queue === "drafts"
+                    ? "Create draft"
+                    : queue === "replies"
+                      ? "Add conversation"
+                      : queue === "meetings"
+                        ? "Schedule meeting"
+                        : "Create task"
+              }
+              onAction={() =>
+                source.length
+                  ? (setOnlyMine(false), setDueOnly(false))
+                  : openCreate(
+                      queue === "drafts"
+                        ? "draft"
+                        : queue === "replies"
+                          ? "conversation"
+                          : queue === "meetings"
+                            ? "meeting"
+                            : "task",
+                    )
+              }
+              icon={<Tray size={24} />}
             />
-            {tasks.length ? (
-              <MiniList
-                records={(due.length ? due : tasks).slice(0, 7)}
-                empty="No commitments due today."
-              />
-            ) : (
-              <Empty
-                title="A little clarity goes a long way"
-                description="Add one next action. Give it an owner and a date. Start with what matters today."
-                action="Create your first task"
-                onAction={() => openCreate("task")}
-                icon={<CheckSquareIcon />}
-              />
-            )}
-          </section>
-          <section className="panel">
-            <SectionHead
-              title="Conversations to continue"
-              count={replies.length}
-              action="Open inbox"
-              onAction={() => setPage("inbox")}
-            />
-            {replies.length ? (
-              <MiniList records={replies.slice(0, 4)} empty="" />
-            ) : (
-              <div className="quiet-empty">
-                <Tray size={23} />
-                <p>
-                  No replies waiting on you.
-                  <br />
-                  <span>
-                    Record a conversation or connect a supported inbox in
-                    Settings.
-                  </span>
-                </p>
-              </div>
-            )}
-          </section>
-          <section className="panel activity-panel">
-            <SectionHead title="What’s been happening" />
-            <ActivityList
-              activities={workspace.activities.slice().reverse().slice(0, 5)}
-            />
-          </section>
-        </div>
+          )}
+          <div className="queue-footer">
+            <span>
+              {shown.length > 12
+                ? `Showing 12 of ${shown.length}`
+                : "Records from this project"}
+            </span>
+            <button
+              className="text-link"
+              onClick={() =>
+                setPage(
+                  queue === "drafts" || queue === "replies" ? "inbox" : "work",
+                )
+              }
+            >
+              Open{" "}
+              {queue === "drafts" || queue === "replies" ? "inbox" : "work"}
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </section>
         <aside className="today-aside">
-          <section className="aside-note">
-            <span className="eyebrow">THE RELATIONSHIP COMES FIRST</span>
-            <h2>
-              Thoughtful beats
-              <br />
-              more.
-            </h2>
-            <p>
-              Keep real context. Make useful promises. Review every message
-              before it leaves.
-            </p>
-            <button className="text-link" onClick={() => setPage("knowledge")}>
-              Your operating instructions
-              <ArrowRight size={16} />
+          <section className="project-overview index-section">
+            <div className="index-heading">
+              <span>01</span>
+              <h2>Project index</h2>
+            </div>
+            <div className="project-overview-name">
+              <span className="project-symbol">
+                {initials(project?.name || "Project")}
+              </span>
+              <div>
+                <strong>{project?.name || "Current project"}</strong>
+                <span>
+                  {workspace.members.length} project{" "}
+                  {workspace.members.length === 1 ? "member" : "members"}
+                </span>
+              </div>
+            </div>
+            <dl>
+              <div>
+                <dt>People</dt>
+                <dd>{records.filter((r) => r.kind === "contact").length}</dd>
+              </div>
+              <div>
+                <dt>Open opportunities</dt>
+                <dd>{opportunities.length}</dd>
+              </div>
+              <div>
+                <dt>Unassigned open work</dt>
+                <dd>{tasks.filter((r) => !r.ownerId).length}</dd>
+              </div>
+            </dl>
+            <button className="text-link" onClick={() => setPage("reports")}>
+              Project reports
+              <ArrowRight size={14} />
             </button>
           </section>
-          <section className="panel compact-panel">
-            <SectionHead title="Coming up" count={meetings.length} />
+          <section className="compact-panel index-section">
+            <div className="index-heading">
+              <span>02</span>
+              <h2>Next meetings</h2>
+              <strong>{meetings.length}</strong>
+            </div>
             {meetings.length ? (
               meetings.slice(0, 3).map((r) => (
                 <button
@@ -345,53 +543,48 @@ export function TodayView() {
                   key={r.id}
                   onClick={() => openRecord(r)}
                 >
-                  <span className="date-tile">
-                    <span>
-                      {new Date(
-                        text(r, "startsAt") || r.dueAt || r.createdAt,
-                      ).toLocaleDateString(undefined, { month: "short" })}
-                    </span>
-                    <strong>
-                      {new Date(
-                        text(r, "startsAt") || r.dueAt || r.createdAt,
-                      ).getDate()}
-                    </strong>
-                  </span>
+                  <CalendarBlank size={18} />
                   <span>
                     <strong>{r.title}</strong>
                     <small>
                       {text(r, "startsAt")
-                        ? new Date(text(r, "startsAt")).toLocaleTimeString(
+                        ? new Date(text(r, "startsAt")).toLocaleString(
                             undefined,
-                            { hour: "numeric", minute: "2-digit" },
+                            {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            },
                           )
                         : "Time not set"}
                     </small>
                   </span>
+                  <ArrowUpRight size={14} />
                 </button>
               ))
             ) : (
-              <p className="muted small-copy">
-                Nothing scheduled. Leave some room for good conversations.
-              </p>
+              <p className="compact-empty">No meetings scheduled.</p>
             )}
             <Button tone="quiet" onClick={() => openCreate("meeting")}>
-              <Plus size={16} />
-              Schedule a meeting
+              <Plus size={15} />
+              Schedule meeting
             </Button>
           </section>
-          <div className="context-note">
-            <ShieldCheck size={21} />
-            <div>
-              <strong>Yours, by project.</strong>
-              <p>
-                Every record, instruction, and connection belongs to its own
-                workspace.
-              </p>
-            </div>
-          </div>
         </aside>
       </div>
+      <section className="panel activity-panel today-activity">
+        <div className="index-heading activity-heading">
+          <span>03</span>
+          <h2>Activity log</h2>
+        </div>
+        <ActivityList
+          activities={workspace.activities
+            .slice()
+            .sort((a, b) => b.at.localeCompare(a.at))
+            .slice(0, 5)}
+        />
+      </section>
     </>
   );
 }
@@ -436,7 +629,7 @@ function ActivityList({
   ) : (
     <div className="quiet-empty">
       <Clock size={21} />
-      <p>Your activity trail will appear here as you work.</p>
+      <p>No activity recorded yet.</p>
     </div>
   );
 }
@@ -634,10 +827,10 @@ export function RecordsView({
         </div>
         {records.length === 0 ? (
           <Empty
-            title={`Your ${mod.label.toLowerCase()} start here`}
+            title={`No ${mod.label.toLowerCase()} yet`}
             description={
               kind === "contact"
-                ? "Add someone you want to build a meaningful relationship with. Keep evidence, conversations, and follow-ups together."
+                ? "Add a contact with an observed identity, owner, and next action."
                 : `Create your first ${mod.singular} and keep every next step in view.`
             }
             action={`Add ${mod.singular}`}
@@ -859,7 +1052,7 @@ export function RecordsView({
         open={savingView}
         onClose={() => setSavingView(false)}
         title="Save this view"
-        description="Keep these filters close for your next visit."
+        description="Save the current filters for this project."
       >
         <form
           onSubmit={(e) => {
@@ -923,8 +1116,8 @@ export function PeopleView() {
   return (
     <>
       <PageHead
-        title="People, with context."
-        description="The right relationships deserve more than a name in a spreadsheet."
+        title="People"
+        description="Contacts, evidence, ownership, and follow-ups for this project."
       />
       <Tabs
         items={[
@@ -989,8 +1182,8 @@ export function PipelineView() {
   return (
     <>
       <PageHead
-        title="Every conversation has a next step."
-        description="Keep genuine opportunities moving, one clear decision at a time."
+        title="Pipeline"
+        description="Track opportunities by stage, value, and next action."
         action="New opportunity"
         onAction={() => openCreate("opportunity")}
       />
@@ -1124,28 +1317,50 @@ export function PipelineView() {
 
 export function WorkView() {
   const [tab, setTab] = useState("task");
+  const records = useRecords();
+  const sections: { kind: RecordKind; icon: typeof CheckCircle }[] = [
+    { kind: "task", icon: CheckCircle },
+    { kind: "content", icon: NotePencil },
+    { kind: "campaign", icon: SquaresFour },
+    { kind: "onboarding", icon: Users },
+    { kind: "meeting", icon: CalendarBlank },
+    { kind: "experiment", icon: Lightning },
+    { kind: "promise", icon: Clock },
+  ];
   return (
     <>
       <PageHead
-        title="Make room for the work."
-        description="Promises, plans, and projects that move the business forward."
+        title="Work"
+        description="Tasks, marketing, meetings, and client delivery for this project."
       />
-      <Tabs
-        items={[
-          ...[
-            "task",
-            "content",
-            "campaign",
-            "onboarding",
-            "meeting",
-            "experiment",
-            "promise",
-          ].map((k) => [k, modules[k as RecordKind].label]),
-          ["playbooks", "Playbooks"],
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
+      <div
+        className="work-navigation"
+        role="group"
+        aria-label="Work categories"
+      >
+        {sections.map((section) => (
+          <button
+            key={section.kind}
+            aria-pressed={tab === section.kind}
+            className={cn(tab === section.kind && "work-nav-active")}
+            onClick={() => setTab(section.kind)}
+          >
+            <section.icon size={17} />
+            <span>{modules[section.kind].label}</span>
+            <strong>
+              {records.filter((r) => r.kind === section.kind).length}
+            </strong>
+          </button>
+        ))}
+        <button
+          aria-pressed={tab === "playbooks"}
+          className={cn(tab === "playbooks" && "work-nav-active")}
+          onClick={() => setTab("playbooks")}
+        >
+          <BookOpen size={17} />
+          <span>Playbooks</span>
+        </button>
+      </div>
       {tab === "playbooks" ? (
         <PlaybooksView />
       ) : (
@@ -1171,8 +1386,8 @@ export function MoneyView() {
   return (
     <>
       <PageHead
-        title="Keep the numbers honest."
-        description="Invoices, payments, and costs. Each with a proper trail."
+        title="Money"
+        description="Manage invoices, proposals, payments, and expenses by currency."
       />
       <div className="money-summary">
         {currencies.length ? (
@@ -1366,8 +1581,8 @@ export function KnowledgeView() {
   return (
     <RecordsView
       kind="knowledge"
-      title="A shared memory for the work."
-      description="Instructions, positioning, decisions, and evidence. Written down so you can move forward."
+      title="Knowledge"
+      description="Project instructions, research, processes, and decisions."
     />
   );
 }
@@ -1377,8 +1592,8 @@ export function AutomationView() {
   return (
     <>
       <PageHead
-        title="Useful work. Clear boundaries."
-        description="Queue focused jobs for Codex and review what actually happened."
+        title="Automation"
+        description="Queue Codex jobs and review their status, outputs, and receipts."
       />
       <div className="runtime-banner">
         <span className="runtime-icon">
@@ -1408,139 +1623,189 @@ export function AutomationView() {
 }
 
 export function InboxView() {
-  const { openCreate, openRecord, workspace } = useCRM();
+  const { openCreate, openRecord, workspace, setPage } = useCRM();
   const [tab, setTab] = useState("action");
+  const [search, setSearch] = useState("");
   const records = useRecords();
   const conversations = records.filter((r) => r.kind === "conversation");
-  const drafts = records.filter((r) => r.kind === "draft");
-  const messages = records.filter((r) => r.kind === "message");
-  const shown =
-    tab === "drafts"
-      ? drafts.filter((r) => !statusIs(r, "Sent", "Rejected"))
-      : tab === "replies"
-        ? messages.filter(
-            (r) => text(r, "direction").toLowerCase() === "inbound",
-          )
-        : conversations.filter(
-            (r) =>
-              tab === "all" ||
-              (tab === "action"
-                ? statusIs(r, "Open", "Needs action")
-                : statusIs(r, "Awaiting reply")),
-          );
+  const drafts = records.filter(
+    (r) => r.kind === "draft" && !statusIs(r, "Sent", "Rejected"),
+  );
+  const inbound = records.filter(
+    (r) =>
+      r.kind === "message" && text(r, "direction").toLowerCase() === "inbound",
+  );
+  const queues = [
+    {
+      id: "action",
+      label: "Needs a reply",
+      records: conversations.filter((r) => statusIs(r, "Open", "Needs action")),
+      icon: Tray,
+    },
+    {
+      id: "waiting",
+      label: "Waiting for reply",
+      records: conversations.filter((r) => statusIs(r, "Awaiting reply")),
+      icon: Clock,
+    },
+    { id: "drafts", label: "Draft review", records: drafts, icon: NotePencil },
+    {
+      id: "replies",
+      label: "Recorded replies",
+      records: inbound,
+      icon: EnvelopeSimple,
+    },
+    {
+      id: "all",
+      label: "All conversations",
+      records: conversations,
+      icon: ListBullets,
+    },
+  ];
+  const selectedQueue = queues.find((q) => q.id === tab)!;
+  const shown = selectedQueue.records.filter((r) =>
+    `${r.title} ${text(r, "body")} ${text(r, "summary")} ${records.find((c) => c.id === r.contactId)?.title || ""}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+  const connected = workspace.integrations.filter(
+    (i) => i.status === "connected",
+  );
   return (
     <>
       <PageHead
-        title="Keep the conversation going."
-        description="Real replies, thoughtful drafts, and a clear next human action."
+        title="Inbox"
+        description="Review conversations, prepare drafts, and track the next response."
         action={tab === "drafts" ? "New draft" : "Add conversation"}
         onAction={() => openCreate(tab === "drafts" ? "draft" : "conversation")}
       />
-      <div className="inbox-notice">
-        <ShieldCheck size={17} />
+      <div className="inbox-safety">
+        <ShieldCheck size={16} />
         <span>
-          Founder never auto-sends messages. Review, approve, and send each one
-          individually.
+          Approval, copying, and sending are separate actions. Every outbound
+          message requires individual human review.
         </span>
+        <button onClick={() => setPage("settings")}>
+          {connected.length} connected{" "}
+          {connected.length === 1 ? "account" : "accounts"}
+          <ArrowUpRight size={14} />
+        </button>
       </div>
-      <Tabs
-        items={[
-          ["action", "Waiting on us"],
-          ["waiting", "Waiting on them"],
-          [
-            "drafts",
-            `Draft review (${drafts.filter((r) => !statusIs(r, "Sent", "Rejected")).length})`,
-          ],
-          ["replies", "Recorded replies"],
-          ["all", "All conversations"],
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
       <div className="inbox-layout">
-        <div className="panel inbox-list">
+        <aside className="inbox-navigation">
+          <span className="nav-label">Queues</span>
+          {queues.map((q) => (
+            <button
+              key={q.id}
+              className={cn(tab === q.id && "inbox-nav-active")}
+              aria-pressed={tab === q.id}
+              onClick={() => {
+                setTab(q.id);
+                setSearch("");
+              }}
+            >
+              <q.icon size={17} />
+              <span>{q.label}</span>
+              <strong>{q.records.length}</strong>
+            </button>
+          ))}
+          <div className="inbox-navigation-note">
+            <h3>Manual and connected accounts</h3>
+            <p>
+              Record replies manually, or sync a supported account from
+              Settings.
+            </p>
+            <button className="text-link" onClick={() => setPage("settings")}>
+              Manage connections
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </aside>
+        <section className="panel inbox-workspace">
+          <div className="inbox-list-heading">
+            <h2>
+              {selectedQueue.label}
+              <span className="count">{shown.length}</span>
+            </h2>
+            <div className="search-input">
+              <MagnifyingGlass size={16} />
+              <input
+                aria-label="Search inbox queue"
+                placeholder="Search this queue…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
           {shown.length ? (
-            shown.map((r) => {
-              const contact = records.find((c) => c.id === r.contactId);
-              return (
-                <button
-                  className="inbox-row"
-                  key={r.id}
-                  onClick={() => openRecord(r)}
-                >
-                  <span className="avatar">
-                    {initials(contact?.title || r.title)}
-                  </span>
-                  <div>
-                    <div className="inbox-row-title">
-                      <strong>{contact?.title || r.title}</strong>
-                      <time>{dateLabel(r.updatedAt)}</time>
+            <div className="inbox-list">
+              {shown.map((r) => {
+                const contact = records.find((c) => c.id === r.contactId);
+                return (
+                  <button
+                    className="inbox-row"
+                    key={r.id}
+                    onClick={() => openRecord(r)}
+                  >
+                    <span className="avatar">
+                      {initials(contact?.title || r.title)}
+                    </span>
+                    <div>
+                      <div className="inbox-row-title">
+                        <strong>{contact?.title || r.title}</strong>
+                        <time>{dateLabel(r.updatedAt)}</time>
+                      </div>
+                      <span className="inbox-subject">{r.title}</span>
+                      <p>
+                        {text(r, "body") ||
+                          text(r, "summary") ||
+                          "No message or context recorded."}
+                      </p>
+                      <div className="inbox-row-meta">
+                        <Badge>{label(r.status)}</Badge>
+                        <span>{label(text(r, "channel") || "manual")}</span>
+                        <Owner id={r.ownerId} record={r} />
+                      </div>
                     </div>
-                    <span className="inbox-subject">{r.title}</span>
-                    <p>
-                      {text(r, "body") ||
-                        text(r, "summary") ||
-                        "Add context to this conversation."}
-                    </p>
-                    <div className="inbox-row-meta">
-                      <Badge>{label(r.status)}</Badge>
-                      <span>{label(text(r, "channel") || "manual")}</span>
-                      <Owner id={r.ownerId} record={r} />
-                    </div>
-                  </div>
-                  <ArrowUpRight size={17} />
-                </button>
-              );
-            })
+                    <ArrowUpRight size={17} />
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <Empty
               title={
-                tab === "drafts"
-                  ? "Good messages start with context."
-                  : tab === "waiting"
-                    ? "No conversations waiting on a reply."
-                    : "Your inbox has room to breathe."
+                search
+                  ? "No matching records"
+                  : tab === "drafts"
+                    ? "No drafts awaiting review"
+                    : tab === "waiting"
+                      ? "No conversations waiting for a reply"
+                      : "No records in this queue"
               }
               description={
-                tab === "drafts"
-                  ? "Create a draft linked to a real person. Review the exact message before approving."
-                  : "Add a conversation or record a reply from the real account. Your next steps will live here."
+                search
+                  ? "Try another name or search term."
+                  : tab === "drafts"
+                    ? "Create a draft linked to a contact, then review and approve the exact message."
+                    : "Add a conversation or record an actual received reply to keep the project inbox current."
               }
-              action={tab === "drafts" ? "Create draft" : "Add conversation"}
+              action={
+                search
+                  ? "Clear search"
+                  : tab === "drafts"
+                    ? "Create draft"
+                    : "Add conversation"
+              }
               onAction={() =>
-                openCreate(tab === "drafts" ? "draft" : "conversation")
+                search
+                  ? setSearch("")
+                  : openCreate(tab === "drafts" ? "draft" : "conversation")
               }
-              icon={<Tray size={26} />}
+              icon={<Tray size={25} />}
             />
           )}
-        </div>
-        <aside className="inbox-aside">
-          <span className="eyebrow">ACCOUNT CONTEXT</span>
-          <h3>Know where you’re speaking.</h3>
-          <p>
-            Each conversation keeps its channel and account context. Copying a
-            message or opening an account does not mark it as sent.
-          </p>
-          <div className="connection-list">
-            {workspace.integrations.length ? (
-              workspace.integrations.map((i) => (
-                <div key={i.id}>
-                  <span>{i.label}</span>
-                  <Badge>{label(i.status)}</Badge>
-                </div>
-              ))
-            ) : (
-              <p className="muted">
-                No connected inboxes. Manual conversations work without a
-                provider.
-              </p>
-            )}
-          </div>
-          <Button tone="quiet" onClick={() => openCreate("draft")}>
-            <NotePencil size={16} />
-            Prepare a draft
-          </Button>
-        </aside>
+        </section>
       </div>
     </>
   );
@@ -1565,8 +1830,8 @@ export function ReportsView() {
   return (
     <>
       <PageHead
-        title="The picture, without the guesswork."
-        description="Counts from this project’s actual records. No projected results or blended currencies."
+        title="Reports"
+        description="Current project counts, pipeline stages, and record completeness."
       />
       <div className="report-metrics">
         {[
@@ -1715,8 +1980,8 @@ export function SettingsView() {
   return (
     <>
       <PageHead
-        title="A workspace that fits the way you work."
-        description="Project context, your team, and honest connection readiness."
+        title="Settings"
+        description="Manage project settings, team access, connections, and Codex tokens."
       />
       <Tabs
         items={[
@@ -1761,7 +2026,7 @@ export function SettingsView() {
           >
             <SectionHead title="Project details" />
             <p className="muted small-copy">
-              Keep the purpose and operating context close.
+              Update the project name, description, and individual send limits.
             </p>
             <div className="field">
               <label htmlFor="settings-name">Project name</label>
@@ -1829,7 +2094,7 @@ export function SettingsView() {
           </form>
           <aside className="settings-aside">
             <ShieldCheck size={29} />
-            <h3>Project context stays here.</h3>
+            <h3>Project access</h3>
             <p>
               Members see the projects they have access to. Codex tokens are
               scoped to one project and expire automatically.
@@ -2030,7 +2295,7 @@ export function SettingsView() {
       {tab === "codex" && (
         <div className="settings-layout">
           <section className="panel settings-panel">
-            <SectionHead title="Your local Codex connection" />
+            <SectionHead title="Codex access" />
             <p>
               Use a scoped, expiring token to let your local Codex runtime read
               project context and prepare changes.
@@ -2070,7 +2335,7 @@ export function SettingsView() {
           </section>
           <aside className="settings-aside">
             <BookOpen size={28} />
-            <h3>Instructions before action.</h3>
+            <h3>Project instructions</h3>
             <p>
               Add project instructions in Knowledge. Codex should read the
               latest version before preparing work. Review receipts in

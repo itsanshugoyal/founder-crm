@@ -1,3 +1,5 @@
+import { Dialog } from "@base-ui/react/dialog";
+
 import {
   createContext,
   useContext,
@@ -122,12 +124,16 @@ const navigation = [
 function Brand() {
   return (
     <span className="brand">
-      <span className="brand-mark">
-        <span />
-        <span />
-        <span />
+      <span className="brand-mark" aria-hidden="true">
+        <svg width="31" height="31" viewBox="0 0 31 31" fill="none">
+          <path d="M3 2H28V29H3V2Z" fill="currentColor" />
+          <path d="M9 8H23V12H13V16H20V20H13V26H9V8Z" fill="white" />
+          <path d="M23 22H27V26H23V22Z" fill="var(--accent)" />
+        </svg>
       </span>
-      founder<span className="brand-dot">.</span>
+      <span className="brand-wordmark">
+        Founder<span className="brand-product">CRM</span>
+      </span>
     </span>
   );
 }
@@ -235,40 +241,45 @@ function Auth({
 
   return (
     <main className="auth-layout">
-      <section className="auth-story">
+      <header className="auth-brand">
         <Brand />
-        <div className="auth-copy">
-          <span className="eyebrow">A calmer place to build</span>
+        <div className="auth-intro">
+          <span className="eyebrow">PROJECT OPERATIONS</span>
           <h1>
-            Good relationships.
+            Manage the business,
             <br />
-            Clear next steps.
-            <br />
-            <span>Room to focus.</span>
+            project by project.
           </h1>
           <p>
-            Your people, projects, conversations, and commitments. Together in
-            one considered workspace.
+            One workspace for relationships, conversations, delivery, and
+            financial records.
           </p>
+          <ol className="auth-index">
+            <li>
+              <span>01</span>People & pipeline
+            </li>
+            <li>
+              <span>02</span>Conversations & work
+            </li>
+            <li>
+              <span>03</span>Money & project knowledge
+            </li>
+          </ol>
         </div>
-        <div className="auth-bottom">
-          <span className="small-dot" />
-          Built for the work behind the business.
-        </div>
-      </section>
+      </header>
       <section className="auth-form-wrap">
         <div className="auth-form">
-          <span className="eyebrow">YOUR FOUNDER WORKSPACE</span>
+          <span className="eyebrow">SECURE ACCESS</span>
           <h2>
             {blocked
-              ? "Your workspace is almost ready"
+              ? "Connect your workspace"
               : invite
                 ? "Join your team"
                 : ownerCreate
                   ? "Create your owner account"
                   : isSetup
-                    ? "Make yourself at home"
-                    : "Welcome back"}
+                    ? "Set up your local workspace"
+                    : "Sign in to Founder CRM"}
           </h2>
           <p>
             {blocked
@@ -278,8 +289,8 @@ function Auth({
                 : ownerCreate
                   ? "Use the email address authorized to own this workspace. Verify it before signing in."
                   : isSetup
-                    ? "Create the owner account for this local workspace. Your real work starts here."
-                    : "Sign in to pick up where you left off."}
+                    ? "Create the first owner account. Project data is stored on this computer."
+                    : "Access the projects and records assigned to your account."}
           </p>
           {blocked ? (
             <>
@@ -613,124 +624,143 @@ export default function App() {
     settings: "Settings",
   };
 
+  const sidebarContent = (surface: string) => (
+    <>
+      <a
+        className="brand-link"
+        href="#"
+        onClick={(e) => {
+          e.preventDefault();
+          setPage("today");
+        }}
+      >
+        <Brand />
+      </a>
+      <div className="project-picker">
+        <span className="project-symbol">
+          {initials(project?.name || "Workspace")}
+        </span>
+        <div>
+          <label htmlFor={`project-switcher-${surface}`}>PROJECT</label>
+          <select
+            id={`project-switcher-${surface}`}
+            value={projectId}
+            onChange={(e) => changeProject(e.target.value)}
+          >
+            {workspace.projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          className="icon-btn project-new"
+          aria-label="Create project"
+          onClick={() => {
+            setMobile(false);
+            setNewProject(true);
+          }}
+        >
+          <Plus size={15} />
+        </button>
+      </div>
+      <button
+        className="sidebar-search"
+        onClick={() => {
+          setMobile(false);
+          setSearchOpen(true);
+        }}
+      >
+        <MagnifyingGlass size={17} />
+        <span>Search records</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+      <nav aria-label="Main navigation">
+        {navigation.map((item, i) => (
+          <div key={item.page}>
+            {i === 0 && <div className="nav-label">Workspace</div>}
+            {i === 5 && <div className="nav-label">Operations</div>}
+
+            <button
+              aria-current={page === item.page ? "page" : undefined}
+              className={cn("nav-item", page === item.page && "nav-active")}
+              onClick={() => setPage(item.page)}
+            >
+              <item.icon
+                size={19}
+                weight={page === item.page ? "fill" : "regular"}
+              />
+              <span>{item.label}</span>
+              {item.page === "inbox" && unread > 0 && (
+                <span className="nav-count">{unread}</span>
+              )}
+              {item.page === "work" && tasks > 0 && (
+                <span className="nav-count">{tasks}</span>
+              )}
+            </button>
+          </div>
+        ))}
+      </nav>
+      <div className="sidebar-bottom">
+        <div className="profile">
+          <div className="avatar avatar-dark">
+            {initials(workspace.actor.name)}
+          </div>
+          <div>
+            <strong>{workspace.actor.name}</strong>
+            <span>{workspace.actor.role}</span>
+          </div>
+          <button
+            className="icon-btn"
+            aria-label="Sign out"
+            onClick={async () => {
+              try {
+                await productionLogout();
+                await request("/api/auth/logout", {
+                  method: "POST",
+                  headers: { "X-CSRF-Token": session.csrfToken || "" },
+                });
+                setSession(await getSession());
+                setWorkspace(null);
+              } catch (e) {
+                toast((e as Error).message);
+              }
+            }}
+          >
+            <SignOut size={18} />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <Context.Provider value={context}>
       <div className="app-shell">
         <a href="#main" className="skip-link">
           Skip to main content
         </a>
-        {mobile && (
-          <button
-            className="mobile-backdrop"
-            onClick={() => setMobile(false)}
-            aria-label="Close navigation"
-          />
-        )}
-        <aside className={cn("sidebar", mobile && "sidebar-open")}>
-          <a
-            className="brand-link"
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              setPage("today");
-            }}
-          >
-            <Brand />
-          </a>
-          <div className="project-picker">
-            <span className="project-symbol">
-              {initials(project?.name || "Workspace")}
-            </span>
-            <div>
-              <label htmlFor="project-switcher">WORKSPACE</label>
-              <select
-                id="project-switcher"
-                value={projectId}
-                onChange={(e) => changeProject(e.target.value)}
-              >
-                {workspace.projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <CaretDown size={13} />
-          </div>
-          <button
-            className="sidebar-search"
-            onClick={() => setSearchOpen(true)}
-          >
-            <MagnifyingGlass size={17} />
-            <span>Search anything</span>
-            <kbd>⌘ K</kbd>
-          </button>
-          <nav aria-label="Main navigation">
-            {navigation.map((item, i) => (
-              <div key={item.page}>
-                {i === 5 && <div className="nav-label">MORE</div>}
-                <button
-                  className={cn("nav-item", page === item.page && "nav-active")}
-                  onClick={() => setPage(item.page)}
-                >
-                  <item.icon
-                    size={19}
-                    weight={page === item.page ? "fill" : "regular"}
-                  />
-                  <span>{item.label}</span>
-                  {item.page === "inbox" && unread > 0 && (
-                    <span className="nav-count">{unread}</span>
-                  )}
-                  {item.page === "work" && tasks > 0 && (
-                    <span className="nav-count">{tasks}</span>
-                  )}
-                </button>
-              </div>
-            ))}
-          </nav>
-          <div className="sidebar-bottom">
-            <button className="add-project" onClick={() => setNewProject(true)}>
-              <Plus size={16} />
-              New project
-            </button>
-            <div className="runtime-status">
-              <span className="small-dot" />
-              <span>
-                {workspace.readiness.mode === "local"
-                  ? "Local workspace"
-                  : "Production workspace"}
-              </span>
-            </div>
-            <div className="profile">
-              <div className="avatar avatar-dark">
-                {initials(workspace.actor.name)}
-              </div>
-              <div>
-                <strong>{workspace.actor.name}</strong>
-                <span>{workspace.actor.role}</span>
-              </div>
-              <button
-                className="icon-btn"
-                aria-label="Sign out"
-                onClick={async () => {
-                  try {
-                    await productionLogout();
-                    await request("/api/auth/logout", {
-                      method: "POST",
-                      headers: { "X-CSRF-Token": session.csrfToken || "" },
-                    });
-                    setSession(await getSession());
-                    setWorkspace(null);
-                  } catch (e) {
-                    toast((e as Error).message);
-                  }
-                }}
-              >
-                <SignOut size={18} />
-              </button>
-            </div>
-          </div>
+        <aside className="sidebar desktop-sidebar">
+          {sidebarContent("desktop")}
         </aside>
+        <Dialog.Root open={mobile} onOpenChange={setMobile}>
+          <Dialog.Portal>
+            <Dialog.Backdrop className="mobile-backdrop" />
+            <Dialog.Popup className="sidebar mobile-sidebar">
+              <Dialog.Title className="sr-only">
+                Project navigation
+              </Dialog.Title>
+              <Dialog.Close
+                className="icon-btn mobile-nav-close"
+                aria-label="Close navigation"
+              >
+                <X size={19} />
+              </Dialog.Close>
+              {sidebarContent("mobile")}
+            </Dialog.Popup>
+          </Dialog.Portal>
+        </Dialog.Root>
         <div className="main-shell">
           <header className="topbar">
             <div className="breadcrumb">
@@ -745,10 +775,21 @@ export default function App() {
               <span className="slash">/</span>
               <strong>{titles[page]}</strong>
             </div>
+            <button
+              className="topbar-search"
+              aria-label="Search this project"
+              onClick={() => setSearchOpen(true)}
+            >
+              <MagnifyingGlass size={16} />
+              <span>Search this project</span>
+              <kbd>Ctrl K</kbd>
+            </button>
             <div className="topbar-right">
               <span className="workspace-private">
                 <span className="small-dot" />
-                Private workspace
+                {workspace.readiness.mode === "local"
+                  ? "Local workspace"
+                  : "Private workspace"}
               </span>
               <Button
                 tone="quiet"
@@ -784,13 +825,6 @@ export default function App() {
               <SettingsView key={projectId} />
             )}
           </main>
-          <footer className="app-footer">
-            <span>
-              {project?.name} <span className="footer-divider">/</span> A little
-              more in focus.
-            </span>
-            <span>Human reviewed. Intentionally.</span>
-          </footer>
         </div>
       </div>
       {notice && (
@@ -820,7 +854,7 @@ export default function App() {
             ? `Edit ${modules[editing.kind].singular}`
             : `New ${modules[createKind || "contact"].singular}`
         }
-        description="Keep the useful details. You can add more later."
+        description={`Project: ${project?.name || "Workspace"}. Changes are saved after you submit this form.`}
         wide
       >
         {(createKind || editing) && (
@@ -870,7 +904,7 @@ export default function App() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         title="Search your workspace"
-        description="Find people, conversations, and the work around them."
+        description="Search contacts, opportunities, conversations, and work in the selected project."
       >
         <div className="modal-body">
           <div className="search-input large-search">
@@ -918,8 +952,8 @@ export default function App() {
       <Modal
         open={newProject}
         onClose={() => setNewProject(false)}
-        title="Give your next project a home"
-        description="People, pipelines, and instructions stay separate for each project."
+        title="Create project"
+        description="Create a separate space for records, team access, and operating instructions."
       >
         <ProjectForm
           onClose={() => setNewProject(false)}
@@ -971,7 +1005,7 @@ function ProjectForm({
           />
         </div>
         <div className="field">
-          <label htmlFor="project-description">What are you building?</label>
+          <label htmlFor="project-description">Project description</label>
           <textarea
             id="project-description"
             rows={4}

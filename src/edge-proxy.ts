@@ -33,10 +33,35 @@ export async function proxyEdge(
   }
   const forwarded = new Request(
     target,
-    new Request(request, { headers, redirect: "manual" }),
+    new Request(request, {
+      headers,
+      redirect: "manual",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(25000)]),
+    }),
   );
   try {
-    return await fetcher(forwarded);
+    const upstream = await fetcher(forwarded);
+    // Consume the native fetch stream before the serverless invocation finishes.
+    // Its transport encoding/length and provider cookies do not describe this response.
+    const body = await upstream.arrayBuffer();
+    const responseHeaders = new Headers({ "Cache-Control": "no-store" });
+    for (const name of [
+      "Content-Type",
+      "Content-Disposition",
+      "Referrer-Policy",
+      "X-Content-Type-Options",
+      "X-Frame-Options",
+      "Retry-After",
+    ]) {
+      const value = upstream.headers.get(name);
+      if (value) responseHeaders.set(name, value);
+    }
+    return new Response(
+      [204, 205, 304].includes(upstream.status) || request.method === "HEAD"
+        ? null
+        : new Uint8Array(body),
+      { status: upstream.status, headers: responseHeaders },
+    );
   } catch {
     return Response.json(
       { error: "The CRM backend is temporarily unavailable." },

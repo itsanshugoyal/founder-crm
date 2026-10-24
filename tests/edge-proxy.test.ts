@@ -51,6 +51,42 @@ test("hosting proxy preserves scoped API requests while stripping hosting creden
   assert.equal(response.status, 200);
   assert.equal(calls, 1);
 });
+
+test("proxy consumes streamed payloads and strips upstream transport headers and cookies", async () => {
+  const response = await proxyEdge(
+    new Request("https://crm.example.invalid/api/session"),
+    "https://fixture.supabase.co/functions/v1/founder-crm",
+    async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"configured":'));
+            controller.enqueue(new TextEncoder().encode("true}"));
+            controller.close();
+          },
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Encoding": "gzip",
+            "Content-Length": "999",
+            "Transfer-Encoding": "chunked",
+            "Set-Cookie": "provider_session=synthetic",
+          },
+        },
+      ),
+  );
+  assert.deepEqual(await response.json(), { configured: true });
+  for (const header of [
+    "Content-Encoding",
+    "Content-Length",
+    "Transfer-Encoding",
+    "Set-Cookie",
+  ]) {
+    assert.equal(response.headers.get(header), null);
+  }
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+});
 test("proxy configuration failures and transport failures stay closed with no retry", async () => {
   let calls = 0;
   const fail: typeof fetch = async () => {
