@@ -1,6 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { proxyEdge } from "../src/edge-proxy";
+import { crmEdgePath } from "../src/edge-path";
+test("function routing accepts Supabase ingress paths and preserves record boundaries", () => {
+  for (const prefix of ["/founder-crm", "/functions/v1/founder-crm"]) {
+    assert.equal(crmEdgePath(prefix + "/api/session"), "/api/session");
+    assert.equal(
+      crmEdgePath(prefix + "/api/invoices/id/pdf"),
+      "/api/invoices/id/pdf",
+    );
+    assert.equal(crmEdgePath(prefix), "/");
+  }
+  assert.equal(
+    crmEdgePath("/founder-crm-other/api/session"),
+    "/founder-crm-other/api/session",
+  );
+});
 test("hosting proxy preserves scoped API requests while stripping hosting credentials", async () => {
   let calls = 0;
   const response = await proxyEdge(

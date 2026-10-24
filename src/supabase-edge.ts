@@ -1,4 +1,5 @@
 import { createApplication, type Environment } from "./server/app";
+import { crmEdgePath } from "./edge-path";
 
 declare const Deno: {
   env: { toObject(): Record<string, string> };
@@ -28,7 +29,6 @@ const env: Environment = {
 const { app } = await createApplication({ env, mode: "production" });
 Deno.serve(async (request) => {
   const url = new URL(request.url);
-  url.pathname =
-    url.pathname.replace(/^\/functions\/v1\/founder-crm(?=\/|$)/, "") || "/";
+  url.pathname = crmEdgePath(url.pathname);
   return app.fetch(new Request(url, request));
 });

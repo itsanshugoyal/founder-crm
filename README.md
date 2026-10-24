@@ -36,7 +36,7 @@ npm run build:site
 
 Tests run serially to keep embedded Postgres memory use bounded. `build:site` packages the UI and Hono API as a self-contained Worker. `.openai/hosting.json` binds this checkout to its existing private Sites project; do not create a duplicate site. Supabase is the production database/auth target. Configure secrets privately using the hosting provider, never Git or chat. Production fails closed until the database, migration and authentication are configured.
 
-The private production target is https://founder-crm-anshu.itsanshugoyal2.chatgpt.site. A deployed setup page does not mean that production data/auth are ready. Current external setup and verification are recorded in [release status](docs/RELEASE-STATUS.md).
+Vercel is the requested hosting target; deployment preparation and the remaining account/plan requirement are in [Vercel setup](docs/VERCEL.md). An earlier private deployment exists at https://founder-crm-anshu.itsanshugoyal2.chatgpt.site. It is not the requested Vercel release or proof of a completed data cutover. Current external setup and verification are recorded in [release status](docs/RELEASE-STATUS.md).
 
 ## Safety rules
 

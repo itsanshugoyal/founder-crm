@@ -8,6 +8,8 @@ The migration rehearsal preserved 76 contacts, 21 operation records and 30 unapp
 
 ## External setup still required
 
+Vercel is now the requested host. The connected goldfish team is Hobby; commercial deployment is pending an eligible plan/team. The official Supabase external connection is available but not installed. See [Vercel setup](VERCEL.md). No paid plan was activated.
+
 1. **Team Seven** (`thnqkgxpeyjholkbocnc`) is now the selected active project under the connected infinity organization, whose plan is free. The existing paused project was untouched. The CRM migration was applied to the previously empty project and live SQL permission checks confirm browser roles cannot call the state RPCs or read CRM tables. The deployed Supabase backend uses managed server keys; no database password was installed.
 2. Create the initial owner account privately in the CRM, verify the email, then sign in. Only the privately configured verified owner identity can bootstrap membership. Configure the production site/redirect URL in Supabase Auth. The private bootstrap email is not returned to clients.
 3. Invite Nahush as an equal owner using his verified individual account. Hosting-level private access and CRM membership are separate boundaries.

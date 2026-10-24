@@ -1,0 +1,10 @@
+.local
+.env*
+node_modules
+vendor
+.agents
+.openai
+src/generated
+test-results
+playwright-report
+coverage
