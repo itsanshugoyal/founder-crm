@@ -31,6 +31,8 @@ Draft approval, copying, opening a conversation, confirming a manual send, and s
 
 The access screen is a single focused card for sign in, local setup, production owner signup, or invitation acceptance. Verification and missing-configuration messages remain actionable. No authenticated bypass is introduced. Production passwords go to Supabase Auth, not the CRM mutation API.
 
+Desktop access pairs that card with a restrained introduction and indexed feature list. On phones the introduction is hidden so the form appears immediately. Product navigation takes inspiration from [Attio's sidebar and quick actions](https://attio.com/help/reference/productivity-collaborating/navigating-your-workspace); compact table/pipeline views follow the useful distinction described in [Folk's view documentation](https://help.folk.app/en/articles/4998224-create-views). Branding, layout and implementation are original.
+
 Status badges match the complete normalized status, so Not connected cannot inherit the Connected success appearance. Connected accounts, sent state, calendar links, execution receipts, revenue, and qualification remain grounded in server responses and stored evidence.
 
 ## Verification

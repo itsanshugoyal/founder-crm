@@ -2668,31 +2668,71 @@ tbody tr:hover {
 /* Access, search, and load states */
 .auth-layout {
   min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
   align-items: center;
-  justify-content: center;
-  padding: 42px 24px;
-  background: #f7f7f7;
+  gap: 72px;
+  width: min(1120px, 100%);
+  padding: 64px 40px;
+  margin: 0 auto;
+  background: var(--canvas);
 }
 .auth-brand {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 26px;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 500px;
+  gap: 70px;
 }
-.auth-brand > span:last-child {
-  color: #999999;
-  font-size: 10px;
+.auth-intro > .eyebrow {
+  color: var(--accent);
+  font:
+    10px "Geist Mono",
+    monospace;
   letter-spacing: 0.1em;
+}
+.auth-intro h1 {
+  margin: 16px 0;
+  color: var(--ink);
+  font-size: clamp(28px, 3.2vw, 43px);
+  font-weight: 550;
+  line-height: 1.16;
+  letter-spacing: -1.5px;
+}
+.auth-intro p {
+  max-width: 36ch;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.auth-index {
+  list-style: none;
+  padding: 0;
+  margin: 34px 0 0;
+  max-width: 340px;
+}
+.auth-index li {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding: 13px 0;
+  color: var(--text);
+  font-size: 12px;
+}
+.auth-index li > span {
+  color: var(--muted);
+  font:
+    10px "Geist Mono",
+    monospace;
 }
 .auth-form-wrap {
   width: min(440px, 100%);
   background: white;
   border: 1px solid #e6e6e6;
-  border-radius: 12px;
-  padding: 32px;
+  border-radius: 8px;
+  padding: 36px;
   box-shadow: 0 8px 35px #38383807;
 }
 .auth-form > .eyebrow {
@@ -2733,7 +2773,7 @@ tbody tr:hover {
   border-top: 1px solid var(--line);
   padding-top: 20px;
   margin-top: 25px;
-  color: #999999;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.7;
 }
@@ -3631,12 +3671,21 @@ tbody tr:hover {
     font-size: 8px;
   }
   .auth-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     padding: 30px 18px;
     justify-content: flex-start;
+    gap: 0;
   }
   .auth-brand {
     margin: 14px 0 25px;
     gap: 14px;
+    min-height: 0;
+    width: min(440px, 100%);
+  }
+  .auth-intro {
+    display: none;
   }
   .auth-form-wrap {
     padding: 26px 24px;
