@@ -13,7 +13,7 @@
     "start": "tsx scripts/dev.ts --production",
     "mcp": "tsx scripts/mcp.ts",
     "skills:verify": "node scripts/verify-skills.mjs",
-    "check": "npm run build && npm test && npm run test:runtime",
+    "check": "npm run build && npm run test:low-memory && npm run test:runtime",
     "build:site": "npm run build && node scripts/build-site.mjs",
     "build:edge": "node scripts/build-edge.mjs",
     "migrate:snapshot": "tsx scripts/migrate-airtable.ts --snapshot",

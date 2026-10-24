@@ -20,6 +20,8 @@ if (
   throw new Error("CRM_API_URL must use HTTPS except on loopback.");
 async function request(path: string, input?: unknown) {
   const response = await fetch(new URL(path, base), {
+    signal: AbortSignal.timeout(30000),
+    redirect: "error",
     method: input ? "POST" : "GET",
     headers: {
       Authorization: `Bearer ${token}`,
