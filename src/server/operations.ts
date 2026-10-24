@@ -110,8 +110,8 @@ export function requireRecord(
 }
 function owner(actor: ActorContext) {
   assert(
-    !actor.machine && actor.member.role === "owner",
-    "An individual owner must perform this action.",
+    !actor.machine && ["owner", "admin"].includes(actor.member.role),
+    "An individual owner or admin must perform this action.",
     403,
   );
 }
@@ -759,7 +759,7 @@ export async function applyMutation(
     );
     const role = payload.role ?? "member";
     assert(
-      ["owner", "member", "viewer"].includes(String(role)),
+      ["owner", "admin", "member", "viewer"].includes(String(role)),
       "Invalid role.",
     );
     const projectIds = Array.isArray(payload.projectIds)
@@ -796,15 +796,16 @@ export async function applyMutation(
   if (action === "create_mcp_token") {
     owner(actor);
     const token = randomToken();
+    const neverExpires = payload.neverExpires === true;
     const days = Number(payload.expiresInDays ?? 7);
     assert(
-      Number.isInteger(days) && days >= 1 && days <= 30,
-      "Token lifetime must be 1–30 days.",
+      neverExpires || (Number.isInteger(days) && days >= 1 && days <= 365),
+      "Token lifetime must be 1–365 days, or choose Never expires.",
     );
     state.private.tokens[await digest(token)] = {
       memberId: actor.member.id,
       projectId,
-      expires: Date.now() + days * 86400000,
+      expires: neverExpires ? null : Date.now() + days * 86400000,
       label: typeof payload.label === "string" ? payload.label : "MCP",
     };
     audit(
@@ -813,7 +814,9 @@ export async function applyMutation(
       projectId,
       null,
       action,
-      "Created a project-scoped expiring token",
+      neverExpires
+        ? "Created a project-scoped token that remains valid until revoked"
+        : "Created a project-scoped expiring token",
     );
     return {
       token,

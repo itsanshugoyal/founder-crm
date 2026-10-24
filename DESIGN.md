@@ -35,6 +35,8 @@ Desktop access pairs that card with a restrained introduction and indexed featur
 
 Status badges match the complete normalized status, so Not connected cannot inherit the Connected success appearance. Connected accounts, sent state, calendar links, execution receipts, revenue, and qualification remain grounded in server responses and stored evidence.
 
+Connections distinguish timestamped Codex checks from CRM-native account authorization. Missing native settings open a private setup dialog with the next consent step; MCP is never counted as a mailbox. Invitations expose Admin and Owner choices with their responsibilities. Token lifetime includes Never expires, until revoked and makes that choice explicit without altering existing tokens. Phone dialogs retain their complete instructions and actions within the viewport.
+
 ## Verification
 
 Verification covers the full build, narrow and desktop layouts, keyboard navigation/dialog focus, project switching, search and filters, contact creation/edit/merge, draft approval and send boundaries, work/playbooks, onboarding checkboxes, invoices and payment actions, authentication, and missing-provider states. Results are recorded in docs/RELEASE-STATUS.md. Live provider and production-account limitations remain explicit.

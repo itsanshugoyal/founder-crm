@@ -11,7 +11,12 @@ export interface PrivateState {
   invites: Record<string, { memberId: string; expires: number }>;
   tokens: Record<
     string,
-    { memberId: string; projectId: string; expires: number; label: string }
+    {
+      memberId: string;
+      projectId: string;
+      expires: number | null;
+      label: string;
+    }
   >;
   shares: Record<
     string,
@@ -41,6 +46,19 @@ export interface PrivateState {
       status: string;
     }
   >;
+  providerSettings?: Record<
+    string,
+    {
+      apiKey: string;
+      configs: Record<string, { authConfig: string; version: string }>;
+    }
+  >;
+  cutover?: {
+    sourceOfTruth: "supabase";
+    verifiedAt: string;
+    sourceSnapshotHash: string;
+    legacyWritesFrozen: boolean;
+  };
   secret: string;
 }
 export interface State {

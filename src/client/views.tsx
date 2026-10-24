@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Dialog } from "@base-ui/react/dialog";
 
@@ -738,6 +738,7 @@ export function RecordsView({
             </Button>
           )}
           <Button
+            aria-label={`Export ${mod.label.toLowerCase()}`}
             onClick={() => {
               csvExport(
                 `${kind}-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -1607,7 +1608,13 @@ export function AutomationView() {
             receipt.
           </p>
         </div>
-        <Badge>Connection not verified</Badge>
+        <Badge>
+          {workspace.integrations.some(
+            (item) => item.provider === "mcp" && item.status === "connected",
+          )
+            ? "MCP verified"
+            : "Connection not verified"}
+        </Badge>
       </div>
       <RecordsView kind="automation" hideHead />
       <div className="automation-guidance">
@@ -1669,7 +1676,8 @@ export function InboxView() {
       .includes(search.toLowerCase()),
   );
   const connected = workspace.integrations.filter(
-    (i) => i.status === "connected",
+    (i) =>
+      i.status === "connected" && i.mode !== "codex" && i.provider !== "mcp",
   );
   return (
     <>
@@ -1686,7 +1694,7 @@ export function InboxView() {
           message requires individual human review.
         </span>
         <button onClick={() => setPage("settings")}>
-          {connected.length} connected{" "}
+          {connected.length} CRM inbox{" "}
           {connected.length === 1 ? "account" : "accounts"}
           <ArrowUpRight size={14} />
         </button>
@@ -1965,7 +1973,25 @@ export function SettingsView() {
   const [tokenLabel, setTokenLabel] = useState("Local Codex");
   const [expires, setExpires] = useState("7");
   const [provider, setProvider] = useState("gmail");
-  const owner = workspace.actor.role === "owner";
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [providerKey, setProviderKey] = useState("");
+  const [projectTokens, setProjectTokens] = useState<
+    Array<{ id: string; label: string; expires: number | null }>
+  >([]);
+  const owner = ["owner", "admin"].includes(workspace.actor.role);
+  const mcpConnected = workspace.integrations.some(
+    (i) => i.provider === "mcp" && i.status === "connected",
+  );
+  useEffect(() => {
+    if (tab === "codex" && owner)
+      void act("list_mcp_tokens", {})
+        .then((result) =>
+          setProjectTokens((result.tokens ?? []) as typeof projectTokens),
+        )
+        .catch(() =>
+          setError("Could not load project tokens. Refresh and try again."),
+        );
+  }, [tab, projectId]);
   async function run(fn: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -2088,7 +2114,7 @@ export function SettingsView() {
               </Button>
             ) : (
               <p className="form-note">
-                Only project owners can change these settings.
+                Only project owners and admins can change these settings.
               </p>
             )}
           </form>
@@ -2097,7 +2123,8 @@ export function SettingsView() {
             <h3>Project access</h3>
             <p>
               Members see the projects they have access to. Codex tokens are
-              scoped to one project and expire automatically.
+              scoped to one project and remain revocable, with a fixed lifetime
+              or access until revoked.
             </p>
             <dl>
               <dt>Storage</dt>
@@ -2178,10 +2205,10 @@ export function SettingsView() {
         <>
           <div className="connections-toolbar">
             <div>
-              <strong>Connect a real account</strong>
+              <strong>Connect your inbox and calendar</strong>
               <p>
-                Authorization opens the provider's own consent screen. Return
-                here to verify the connection.
+                Codex connections and CRM connections are shown separately. CRM
+                accounts require their own authorization.
               </p>
             </div>
             {owner && (
@@ -2200,6 +2227,15 @@ export function SettingsView() {
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
+                      if (
+                        workspace.integrations.some(
+                          (i) =>
+                            i.id === "setup-" + provider && i.setupRequired,
+                        )
+                      ) {
+                        setSetupOpen(true);
+                        return;
+                      }
                       const result = await act("connect_provider", {
                         provider,
                       });
@@ -2236,9 +2272,13 @@ export function SettingsView() {
                 {i.status !== "connected" && (
                   <div className="connection-pending">
                     <WarningCircle size={17} />
-                    {workspace.readiness.composio
-                      ? "Authorize and verify this account"
-                      : "Requires administrator configuration"}
+                    {i.provider === "mcp"
+                      ? "Connect Codex using a project token"
+                      : i.setupRequired
+                        ? "Connection setup needed · choose Connect account"
+                        : i.mode === "codex"
+                          ? "Refresh this connection in Codex"
+                          : "Authorize and verify this account"}
                   </div>
                 )}
                 {i.accountId && (
@@ -2297,8 +2337,8 @@ export function SettingsView() {
           <section className="panel settings-panel">
             <SectionHead title="Codex access" />
             <p>
-              Use a scoped, expiring token to let your local Codex runtime read
-              project context and prepare changes.
+              Use a project token to let your local Codex runtime read project
+              context and prepare changes.
             </p>
             <div className="permission-list">
               <div>
@@ -2318,7 +2358,9 @@ export function SettingsView() {
             </div>
             <div className="inline-notice">
               <WarningCircle size={18} />
-              Runtime connection has not been verified in this session.
+              {mcpConnected
+                ? "Connected. Codex has successfully used this project’s MCP tools."
+                : "Not verified yet. Connect Codex with a project token, then run a connection check."}
             </div>
             {owner && (
               <Button
@@ -2331,6 +2373,35 @@ export function SettingsView() {
                 <LinkSimple size={16} />
                 Create project token
               </Button>
+            )}
+            {owner && projectTokens.length > 0 && (
+              <div className="permission-list" aria-label="Project tokens">
+                {projectTokens.map((item) => (
+                  <div key={item.id}>
+                    <span>
+                      {item.label} ·{" "}
+                      {item.expires === null
+                        ? "Never expires"
+                        : "Expires " +
+                          new Date(item.expires).toLocaleDateString("en-IN")}
+                    </span>
+                    <Button
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          await act("revoke_mcp_token", { tokenId: item.id });
+                          const result = await act("list_mcp_tokens", {});
+                          setProjectTokens(
+                            (result.tokens ?? []) as typeof projectTokens,
+                          );
+                        })
+                      }
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
           <aside className="settings-aside">
@@ -2403,6 +2474,10 @@ export function SettingsView() {
                   onChange={(e) => setInviteRole(e.target.value)}
                 >
                   <option value="member">Member · can manage records</option>
+                  <option value="admin">
+                    Admin · manage people, settings and records
+                  </option>
+                  <option value="owner">Owner · full cofounder access</option>
                   <option value="viewer">Viewer · read only</option>
                 </select>
               </div>
@@ -2440,9 +2515,13 @@ export function SettingsView() {
               void run(async () => {
                 const result = await act("create_mcp_token", {
                   label: tokenLabel,
-                  expiresInDays: Number(expires),
+                  ...(expires === "never"
+                    ? { neverExpires: true }
+                    : { expiresInDays: Number(expires) }),
                 });
                 setToken(String(result.token || ""));
+                const listed = await act("list_mcp_tokens", {});
+                setProjectTokens((listed.tokens ?? []) as typeof projectTokens);
               });
             }}
           >
@@ -2458,16 +2537,24 @@ export function SettingsView() {
                 />
               </div>
               <div className="field">
-                <label htmlFor="token-expiry">Expires in days</label>
-                <input
+                <label htmlFor="token-expiry">Token lifetime</label>
+                <select
                   id="token-expiry"
-                  type="number"
-                  min="1"
-                  max="30"
                   required
                   value={expires}
                   onChange={(e) => setExpires(e.target.value)}
-                />
+                >
+                  <option value="7">7 days</option>
+                  <option value="30">30 days</option>
+                  <option value="90">90 days</option>
+                  <option value="never">Never expires · until revoked</option>
+                </select>
+                {expires === "never" && (
+                  <p className="small-copy">
+                    This token stays active until you revoke it here. Its
+                    project scope and read/draft-only permissions stay the same.
+                  </p>
+                )}
               </div>
             </div>
             <div className="form-footer">
@@ -2480,6 +2567,79 @@ export function SettingsView() {
             </div>
           </form>
         )}
+      </Modal>
+      <Modal
+        open={setupOpen}
+        onClose={() => {
+          setSetupOpen(false);
+          setProviderKey("");
+        }}
+        title="Connection setup"
+        description="One-time setup for this project's CRM connections. Your Codex sign-in is separate."
+      >
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run(async () => {
+              await act("configure_provider", {
+                provider,
+                apiKey: providerKey,
+              });
+              setProviderKey("");
+              setSetupOpen(false);
+              toast(
+                "Setup verified. Choose Connect account to authorize your account.",
+              );
+            });
+          }}
+        >
+          <div className="modal-body">
+            <ErrorBox error={error} />
+            <p>
+              Add your Composio developer project key privately. The CRM checks
+              the provider tools and pins their versions. Then you authorize
+              Gmail, Calendar or Instagram on the provider’s consent screen.
+            </p>
+            <a
+              href="https://dashboard.composio.dev"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Composio developer settings
+            </a>
+            <div className="field">
+              <label htmlFor="provider-project-key">
+                Composio project API key
+              </label>
+              <input
+                id="provider-project-key"
+                type="password"
+                autoComplete="off"
+                value={providerKey}
+                onChange={(event) => setProviderKey(event.target.value)}
+              />
+            </div>
+            <p className="small-copy">
+              Stored only in private server configuration. Leave blank to reuse
+              a previously saved key. Setup does not connect an account or send
+              a message.
+            </p>
+          </div>
+          <div className="form-footer">
+            <Button
+              type="button"
+              onClick={() => {
+                setSetupOpen(false);
+                setProviderKey("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button tone="primary" disabled={busy}>
+              {busy ? "Checking setup…" : "Verify and save setup"}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </>
   );

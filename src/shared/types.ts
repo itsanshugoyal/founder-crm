@@ -50,7 +50,7 @@ export interface Member {
   id: string;
   name: string;
   email?: string;
-  role: "owner" | "member" | "viewer";
+  role: "owner" | "admin" | "member" | "viewer";
   projectIds: string[];
 }
 export interface Activity {
@@ -71,6 +71,9 @@ export interface Integration {
   reason?: string;
   accountId?: string;
   projectId?: string;
+  setupRequired?: boolean;
+  mode?: "native" | "codex";
+  lastVerifiedAt?: string;
 }
 export interface Readiness {
   database: boolean;

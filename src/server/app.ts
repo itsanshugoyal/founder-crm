@@ -189,7 +189,7 @@ export async function createApplication(options: AppOptions = {}) {
     const bearer = c.req.header("authorization")?.replace(/^Bearer /i, "");
     if (bearer) {
       const token = state.private.tokens[await digest(bearer)];
-      if (token && token.expires > Date.now()) {
+      if (token && (token.expires === null || token.expires > Date.now())) {
         const member = state.members.find((m) => m.id === token.memberId);
         if (member)
           return {
@@ -600,26 +600,107 @@ export async function createApplication(options: AppOptions = {}) {
         .slice(0, 500),
       integrations: [
         ...(providers?.integrations(state, c.get("actor"), projectId) ?? []),
-        {
-          id: "composio",
-          provider: "composio",
-          label: "Composio providers",
-          status: "not_connected",
-          capabilities: [],
-          reason:
-            "Connect an account and configure an explicit per-project account binding before provider sends.",
-        },
+        ...["gmail", "googlecalendar", "instagram"]
+          .filter(
+            (provider) =>
+              !Object.values(state.private.connections ?? {}).some(
+                (connection) =>
+                  connection.projectId === projectId &&
+                  connection.memberId === member.id &&
+                  connection.provider === provider,
+              ),
+          )
+          .map((provider) => ({
+            id: "setup-" + provider,
+            provider,
+            label:
+              provider === "gmail"
+                ? "Gmail · CRM inbox"
+                : provider === "googlecalendar"
+                  ? "Google Calendar · CRM"
+                  : "Instagram · CRM",
+            status: "not_connected" as const,
+            capabilities: [],
+            mode: "native" as const,
+            setupRequired: !providers?.configured(state, projectId, provider),
+            reason: providers?.configured(state, projectId, provider)
+              ? "Ready to authorize your account."
+              : "Add this project's Composio connection settings, then authorize your account. Connecting an app in Codex does not link it to this CRM.",
+          })),
+        ...state.records
+          .filter(
+            (record) =>
+              record.projectId === projectId &&
+              record.kind === "knowledge" &&
+              record.data.integrationVerification === true &&
+              record.data.mode === "codex" &&
+              ["gmail", "googlecalendar", "composio"].includes(
+                String(record.data.provider),
+              ) &&
+              !state.records.some(
+                (other) =>
+                  other.projectId === projectId &&
+                  other.kind === "knowledge" &&
+                  other.data.mode === "codex" &&
+                  other.data.integrationVerification === true &&
+                  other.data.provider === record.data.provider &&
+                  String(other.data.checkedAt) > String(record.data.checkedAt),
+              ),
+          )
+          .map((record) => ({
+            id: "codex-" + String(record.data.provider),
+            provider: String(record.data.provider),
+            label: String(record.data.label ?? record.title) + " · Codex",
+            status: (Date.now() - Date.parse(String(record.data.checkedAt)) >=
+              0 &&
+            Date.now() - Date.parse(String(record.data.checkedAt)) <
+              7 * 86400000
+              ? "connected"
+              : "not_connected") as "connected" | "not_connected",
+            mode: "codex" as const,
+            capabilities:
+              record.data.provider === "composio"
+                ? ["oauth_authenticated"]
+                : ["read_via_codex", "draft_in_crm"],
+            lastVerifiedAt: String(record.data.checkedAt),
+            reason:
+              record.data.provider === "composio"
+                ? "Codex MCP sign-in verified. Provider account authorization and CRM project-key setup are separate; this does not grant the CRM inbox access."
+                : "Available to Codex workflows. CRM-native inbox/calendar authorization is separate. Sending always requires your individual action.",
+          })),
         {
           id: "mcp",
           provider: "mcp",
           label: "Project-scoped MCP",
-          status: "restricted",
+          status:
+            Object.values(state.private.tokens).some(
+              (token) =>
+                token.projectId === projectId &&
+                (token.expires === null || token.expires > Date.now()),
+            ) &&
+            state.activities.some(
+              (activity) =>
+                activity.projectId === projectId &&
+                activity.actor.endsWith(" (MCP)"),
+            )
+              ? "connected"
+              : "not_connected",
           capabilities: ["read", "records", "drafts", "tasks", "evidence"],
-          reason: "Cannot approve, send, invite, issue invoices, or spend.",
+          reason:
+            "Project-scoped read and preparation access. Cannot approve, send, invite, issue invoices, or spend.",
         },
       ],
       actor: member,
-      readiness,
+      readiness: {
+        ...readiness,
+        sourceOfTruth:
+          state.private.cutover?.sourceOfTruth === "supabase"
+            ? "Supabase · live CRM. Airtable is an archived snapshot."
+            : readiness.sourceOfTruth,
+        composio: ["gmail", "googlecalendar", "instagram"].some((provider) =>
+          providers?.configured(state, projectId, provider),
+        ),
+      },
       revision: String(state.revision),
     });
   });
@@ -647,6 +728,7 @@ export async function createApplication(options: AppOptions = {}) {
     if (
       [
         "connect_provider",
+        "configure_provider",
         "provider_connection_status",
         "fetch_inbox",
         "provider_send",

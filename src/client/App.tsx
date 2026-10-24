@@ -523,6 +523,7 @@ export default function App() {
       record?.id,
       record?.version,
     );
+    if (action === "list_mcp_tokens") return result;
     await refresh();
     toast(result.message || "Saved to your workspace");
     return result;
@@ -867,7 +868,9 @@ export default function App() {
             kind={editing?.kind || createKind!}
             record={editing || undefined}
             members={workspace.members.filter(
-              (m) => m.projectIds.includes(projectId) || m.role === "owner",
+              (m) =>
+                m.projectIds.includes(projectId) ||
+                ["owner", "admin"].includes(m.role),
             )}
             contacts={records.filter((r) => r.kind === "contact")}
             integrations={workspace.integrations}

@@ -8,4 +8,4 @@ Keep mrsumitreview, mommylilworld, fs_praveen_mekala, captain_amaira and geekyra
 
 Success means validated buyer pain, booked and held conversations, activated design partners, and willingness to pay. Do not optimize lead count. No paid LLM APIs, n8n, automatic sends or automatic publishing. Codex supplies reasoning within the existing subscription; this does not guarantee unlimited usage or unattended availability.
 
-Airtable remains authoritative until an explicit, verified cutover. Founder CRM holds staging work and imported historical records. Do not silently write the same contact in both systems.
+The verified 25 October 2026 IST cutover is complete. Supabase is authoritative. Airtable is a read-only historical archive; the old hosted CRM is retired and its local write helpers are guarded. Do not read Airtable for daily operations or dual-write contacts. Preserve original raw fields and uncertainty when improving imported records. See docs/AUTOMATION-STAGES.md and .agents/voice/anshu.md for focused workflows and founder voice.

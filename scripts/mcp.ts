@@ -10,7 +10,7 @@ const token = process.env.CRM_MCP_TOKEN,
   base = process.env.CRM_API_URL ?? "http://127.0.0.1:3461";
 if (!token || !projectId)
   throw new Error(
-    "Set CRM_MCP_TOKEN and CRM_PROJECT_ID to an owner-created, project-scoped expiring token.",
+    "Set CRM_MCP_TOKEN and CRM_PROJECT_ID to an owner-created, project-scoped revocable token.",
   );
 const url = new URL(base);
 if (

@@ -1,5 +1,7 @@
 # Owner verification and quick review — 24 October 2026
 
+Update, 25 October: the owner's latest screenshot shows the production Site URL and both narrowly scoped redirect entries saved correctly. This supersedes the setup-pending statements below. The connected browser still does not expose that signed-in profile, so this is screenshot evidence, not a new live dashboard read or a newly tested email-delivery round trip.
+
 The emailed confirmation returned to localhost. The owner's screenshot confirms that Supabase Site URL was still `http://localhost:3000` and Redirect URLs was empty. This must be corrected in Team Seven's Auth URL Configuration; changing application code alone cannot update that service setting.
 
 The production client now constructs verification return URLs from the exact Vercel CRM origin. It preserves only a required invitation parameter and strips authentication fragments, arbitrary redirect parameters and unrelated paths. Expired or failed verification callbacks show safe recovery guidance without echoing provider details. Verified owners should sign in using their existing password rather than registering again.

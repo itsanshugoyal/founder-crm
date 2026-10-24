@@ -70,22 +70,52 @@ export class Providers {
     private env: ProviderEnvironment,
     private fetcher: typeof fetch = fetch,
   ) {}
-  private config(provider: Provider) {
+  private config(provider: Provider, projectId?: string, state?: State) {
     const prefix =
       provider === "gmail"
         ? "GMAIL"
         : provider === "googlecalendar"
           ? "GOOGLECALENDAR"
           : "INSTAGRAM";
+    const stored = projectId
+      ? state?.private.providerSettings?.[projectId]?.configs[provider]
+      : undefined;
     return {
-      authConfig: this.env[`COMPOSIO_${prefix}_AUTH_CONFIG_ID`],
-      version: this.env[`COMPOSIO_${prefix}_TOOL_VERSION`],
+      authConfig:
+        stored?.authConfig ?? this.env[`COMPOSIO_${prefix}_AUTH_CONFIG_ID`],
+      version: stored?.version ?? this.env[`COMPOSIO_${prefix}_TOOL_VERSION`],
     };
   }
-  private async call(path: string, body?: unknown) {
+  configured(state: State, projectId: string, provider: string) {
+    const config = this.config(provider as Provider, projectId, state);
+    return (
+      !!(
+        state.private.providerSettings?.[projectId]?.apiKey ??
+        this.env.COMPOSIO_API_KEY
+      ) &&
+      !!config.authConfig &&
+      !!config.version
+    );
+  }
+  private async configuration(provider: Provider, projectId: string) {
+    return this.config(provider, projectId, await this.db.snapshot());
+  }
+  private async call(
+    path: string,
+    body?: unknown,
+    projectId?: string,
+    suppliedKey?: string,
+  ) {
+    const apiKey =
+      suppliedKey ??
+      (projectId
+        ? (await this.db.snapshot()).private.providerSettings?.[projectId]
+            ?.apiKey
+        : undefined) ??
+      this.env.COMPOSIO_API_KEY;
     assert(
-      this.env.COMPOSIO_API_KEY,
-      "Configure the server Composio API key and provider auth config first.",
+      apiKey,
+      "Open Connection setup and add your Composio project key privately.",
       409,
     );
     const response = await this.fetcher(
@@ -93,7 +123,7 @@ export class Providers {
       {
         method: body ? "POST" : "GET",
         headers: {
-          "x-api-key": this.env.COMPOSIO_API_KEY,
+          "x-api-key": apiKey,
           "Content-Type": "application/json",
         },
         body: body ? JSON.stringify(body) : undefined,
@@ -114,18 +144,25 @@ export class Providers {
       "Provider action is not allowlisted.",
       403,
     );
-    const { version } = this.config(c.provider as Provider);
+    const { version } = await this.configuration(
+      c.provider as Provider,
+      c.projectId,
+    );
     assert(
       version && /^\d{8}_\d{2}$/.test(version),
       "Configure a verified pinned provider tool version first.",
       409,
     );
-    return this.call("tools/execute/" + slug, {
-      connected_account_id: c.accountId,
-      user_id: c.userId,
-      version,
-      arguments: args,
-    });
+    return this.call(
+      "tools/execute/" + slug,
+      {
+        connected_account_id: c.accountId,
+        user_id: c.userId,
+        version,
+        arguments: args,
+      },
+      c.projectId,
+    );
   }
   private success(response: Data) {
     assert(
@@ -256,6 +293,8 @@ export class Providers {
     assert(Object.hasOwn(tools, kind), "Unsupported provider.", 403);
     const details = await this.call(
       "connected_accounts/" + encodeURIComponent(c.accountId),
+      undefined,
+      c.projectId,
     );
     assert(
       details.user_id === c.userId &&
@@ -265,7 +304,8 @@ export class Providers {
       403,
     );
     assert(
-      object(details.auth_config).id === this.config(kind).authConfig,
+      object(details.auth_config).id ===
+        (await this.configuration(kind, c.projectId)).authConfig,
       "Provider auth configuration does not match.",
       403,
     );
@@ -304,6 +344,8 @@ export class Providers {
       403,
     );
     this.actor(await this.db.snapshot(), actor, input.projectId);
+    if (input.action === "configure_provider")
+      return this.configure(actor, input);
     if (input.action === "connect_provider")
       return this.connect(actor, input, origin);
     const connectionId = cleanString(
@@ -351,9 +393,112 @@ export class Providers {
     );
     return this.send(actor, input, c, origin);
   }
+  private async configure(
+    actor: ActorContext,
+    input: Mutation,
+  ): Promise<MutationResult> {
+    assert(
+      ["owner", "admin"].includes(actor.member.role),
+      "Only an admin can configure connections.",
+      403,
+    );
+    const provider = String(input.payload.provider) as Provider;
+    assert(Object.hasOwn(tools, provider), "Unsupported provider.");
+    const state = await this.db.snapshot();
+    const existing = state.private.providerSettings?.[input.projectId];
+    const apiKey =
+      typeof input.payload.apiKey === "string" && input.payload.apiKey.trim()
+        ? input.payload.apiKey.trim()
+        : (existing?.apiKey ?? this.env.COMPOSIO_API_KEY);
+    assert(
+      apiKey && apiKey.length >= 16 && apiKey.length <= 512,
+      "Enter the Composio project API key privately.",
+    );
+    // Read schemas only: setup never executes a provider tool or an LLM.
+    const definitions = await Promise.all(
+      tools[provider].map((slug) =>
+        this.call(
+          "tools/" + slug + "?version=latest",
+          undefined,
+          input.projectId,
+          apiKey,
+        ),
+      ),
+    );
+    const versions = definitions.map((item) =>
+      String(item.version ?? object(item.toolkit).version ?? ""),
+    );
+    const version = versions[0];
+    assert(
+      /^\d{8}_\d{2}$/.test(version) &&
+        versions.every((value) => value === version),
+      "Could not verify a single dated provider version. No account was connected.",
+      409,
+    );
+    const configName = `Founder CRM ${input.projectId} ${provider}`;
+    const listed = await this.call(
+      "auth_configs?limit=100&search=" + encodeURIComponent(configName),
+      undefined,
+      input.projectId,
+      apiKey,
+    );
+    let authConfig = list(listed.items).find(
+      (item) =>
+        object(item.toolkit).slug === provider && item.name === configName,
+    )?.id;
+    if (!authConfig) {
+      const created = await this.call(
+        "auth_configs",
+        {
+          toolkit: { slug: provider },
+          auth_config: {
+            type: "use_composio_managed_auth",
+            name: configName,
+            credentials: {},
+            restrict_to_following_tools: [...tools[provider]],
+          },
+        },
+        input.projectId,
+        apiKey,
+      );
+      authConfig = object(created.auth_config).id ?? created.id;
+    }
+    assert(
+      typeof authConfig === "string" && authConfig.length > 3,
+      "Composio did not return a valid connection configuration.",
+      502,
+    );
+    await transact(this.db, (live) => {
+      const current = this.actor(live, actor, input.projectId);
+      assert(
+        ["owner", "admin"].includes(current.member.role),
+        "Only an admin can configure connections.",
+        403,
+      );
+      live.private.providerSettings ??= {};
+      live.private.providerSettings[input.projectId] = {
+        apiKey,
+        configs: {
+          ...live.private.providerSettings[input.projectId]?.configs,
+          [provider]: { authConfig: authConfig as string, version },
+        },
+      };
+      audit(
+        live,
+        actor,
+        input.projectId,
+        null,
+        "configure_provider",
+        `Verified ${labels[provider]} connection setup and pinned its tool version. No account connected or message sent.`,
+      );
+    });
+    return {
+      message: `${labels[provider]} setup verified. Now choose Connect account to authorize it. No message was sent.`,
+    };
+  }
   private async connect(actor: ActorContext, input: Mutation, origin: string) {
     assert(
-      actor.member.role === "owner",
+      ["owner", "admin"].includes(actor.member.role),
       "An owner must connect external accounts.",
       403,
     );
@@ -363,10 +508,13 @@ export class Providers {
       "Only Gmail, Calendar, and Instagram Business/Creator adapters are enabled.",
       409,
     );
-    const { authConfig, version } = this.config(provider);
+    const { authConfig, version } = await this.configuration(
+      provider,
+      input.projectId,
+    );
     assert(
       authConfig && version && /^\d{8}_\d{2}$/.test(version),
-      "Configure the provider auth config and verified pinned version first.",
+      "Finish Connection setup for this provider, then connect your account.",
       409,
     );
     if (input.payload.existingConnectionId) {
@@ -418,11 +566,15 @@ export class Providers {
       };
     }
     const userId = `founder-crm:${actor.member.id}`,
-      response = await this.call("connected_accounts/link", {
-        auth_config_id: authConfig,
-        user_id: userId,
-        callback_url: origin + "/?connection=complete",
-      }),
+      response = await this.call(
+        "connected_accounts/link",
+        {
+          auth_config_id: authConfig,
+          user_id: userId,
+          callback_url: origin + "/?connection=complete",
+        },
+        input.projectId,
+      ),
       accountId = cleanString(
         response.connected_account_id,
         "Provider account",
