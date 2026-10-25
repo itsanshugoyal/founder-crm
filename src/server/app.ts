@@ -7,6 +7,7 @@ import type {
   Mutation,
   Readiness,
   Session,
+  WorkspaceData,
 } from "../shared/types.js";
 import {
   normalizeState,
@@ -183,9 +184,10 @@ export async function createApplication(options: AppOptions = {}) {
   }
   async function authenticate(
     c: Context,
+    snapshot?: State,
   ): Promise<{ actor: ActorContext; state: State; csrf: string } | null> {
     if (!db) return null;
-    const state = await db.snapshot();
+    const state = snapshot ?? (await db.snapshot());
     const bearer = c.req.header("authorization")?.replace(/^Bearer /i, "");
     if (bearer) {
       const token = state.private.tokens[await digest(bearer)];
@@ -316,8 +318,9 @@ export async function createApplication(options: AppOptions = {}) {
     }),
   );
   app.get("/api/session", async (c) => {
-    const auth = await authenticate(c);
-    const state = auth?.state ?? (db ? await db.snapshot() : undefined);
+    const snapshot = db ? await db.snapshot() : undefined;
+    const auth = snapshot ? await authenticate(c, snapshot) : null;
+    const state = auth?.state ?? snapshot;
     let setupRequired = !readiness.database || !readiness.auth;
     if (db && mode === "local") setupRequired = state?.members.length === 0;
     const session: Session = {
@@ -337,6 +340,14 @@ export async function createApplication(options: AppOptions = {}) {
     if (mode === "production" && env.SUPABASE_URL && env.SUPABASE_ANON_KEY) {
       session.supabaseUrl = env.SUPABASE_URL;
       session.supabaseAnonKey = env.SUPABASE_ANON_KEY;
+    }
+    if (auth && c.req.query("includeWorkspace") === "1") {
+      session.workspace = workspaceFor(
+        auth.state,
+        auth.actor,
+        c.req.query("projectId"),
+      );
+      session.readiness = session.workspace.readiness;
     }
     return c.json(session);
   });
@@ -574,18 +585,22 @@ export async function createApplication(options: AppOptions = {}) {
     }
     await next();
   });
-  app.get("/api/workspace", async (c) => {
-    const { member } = c.get("actor"),
-      state = c.get("state");
+  function workspaceFor(
+    state: State,
+    actor: ActorContext,
+    selectedProjectId?: string,
+  ): WorkspaceData {
+    const { member } = actor;
     const projects = state.projects.filter(
       (p) =>
         member.projectIds.includes(p.id) &&
-        (!c.get("actor").machine || c.get("actor").projectId === p.id),
+        (!actor.machine || actor.projectId === p.id),
     );
-    const projectId = c.req.query("projectId") ?? projects[0]?.id;
+    const projectId = selectedProjectId ?? projects[0]?.id;
     assert(projectId, "No project membership is available.", 403);
-    requireProject(state, c.get("actor"), projectId);
-    return c.json({
+    requireProject(state, actor, projectId);
+    return {
+      selectedProjectId: projectId,
       projects,
       members: state.members
         .filter((m) => m.projectIds.includes(projectId))
@@ -599,7 +614,7 @@ export async function createApplication(options: AppOptions = {}) {
         .sort((a, b) => b.at.localeCompare(a.at))
         .slice(0, 500),
       integrations: [
-        ...(providers?.integrations(state, c.get("actor"), projectId) ?? []),
+        ...(providers?.integrations(state, actor, projectId) ?? []),
         ...["gmail", "googlecalendar", "instagram"]
           .filter(
             (provider) =>
@@ -702,8 +717,13 @@ export async function createApplication(options: AppOptions = {}) {
         ),
       },
       revision: String(state.revision),
-    });
-  });
+    };
+  }
+  app.get("/api/workspace", (c) =>
+    c.json(
+      workspaceFor(c.get("state"), c.get("actor"), c.req.query("projectId")),
+    ),
+  );
   app.post("/api/mutate", async (c) => {
     const input = (await body(c)) as unknown as Mutation;
     assert(

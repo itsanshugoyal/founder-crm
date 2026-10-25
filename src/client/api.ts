@@ -4,12 +4,24 @@ import type {
   Session,
   WorkspaceData,
 } from "../shared/types";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { verificationRedirectUrl } from "../shared/auth-redirect";
 let supabase: SupabaseClient | undefined;
-export function configureAuth(session: Session) {
-  if (session.supabaseUrl && session.supabaseAnonKey && !supabase)
-    supabase = createClient(session.supabaseUrl, session.supabaseAnonKey);
+let authSetup: Promise<void> | undefined;
+export async function configureAuth(session: Session) {
+  if (!session.supabaseUrl || !session.supabaseAnonKey || supabase) return;
+  const url = session.supabaseUrl,
+    publicKey = session.supabaseAnonKey;
+  if (authSetup) return authSetup;
+  authSetup = (async () => {
+    const { createClient } = await import("@supabase/supabase-js");
+    supabase = createClient(url, publicKey);
+  })();
+  try {
+    await authSetup;
+  } finally {
+    authSetup = undefined;
+  }
 }
 export async function productionLogin(email: string, password: string) {
   if (!supabase) throw Error("Production authentication is not configured.");
@@ -65,6 +77,7 @@ export async function request<T>(
     : undefined;
   const response = await fetch(path, {
     credentials: "same-origin",
+    signal: options?.signal ?? AbortSignal.timeout(30000),
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -74,17 +87,47 @@ export async function request<T>(
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok)
-    throw new Error(
+    throw new RequestError(
+      response.status,
       body.error || `Request failed (${response.status}). Please try again.`,
     );
   return body as T;
 }
-export async function getSession() {
-  const initial = await request<Session>("/api/session");
-  configureAuth(initial);
-  return supabase && !initial.authenticated
-    ? request<Session>("/api/session")
-    : initial;
+export class RequestError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+const pendingSessions = new Map<string, Promise<Session>>();
+export function getSession(
+  options: { includeWorkspace?: boolean; projectId?: string } = {},
+) {
+  const params = new URLSearchParams();
+  if (options.includeWorkspace) params.set("includeWorkspace", "1");
+  if (options.projectId) params.set("projectId", options.projectId);
+  const path = "/api/session" + (params.size ? "?" + params : "");
+  const pending = pendingSessions.get(path);
+  if (pending) return pending;
+  const result = (async () => {
+    const initial = await request<Session>(path);
+    await configureAuth(initial);
+    // A signed-out visitor needs no second database/Auth round trip.
+    const token =
+      supabase && !initial.authenticated
+        ? (await supabase.auth.getSession()).data.session?.access_token
+        : undefined;
+    return token ? request<Session>(path) : initial;
+  })();
+  pendingSessions.set(path, result);
+  void result
+    .finally(() => {
+      if (pendingSessions.get(path) === result) pendingSessions.delete(path);
+    })
+    .catch(() => {});
+  return result;
 }
 export const getWorkspace = (projectId?: string) =>
   request<WorkspaceData>(

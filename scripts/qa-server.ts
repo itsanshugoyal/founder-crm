@@ -6,6 +6,7 @@ import { createApplication } from "../src/server/app";
 import { createLocalDatabase } from "../src/server/local";
 import { transact } from "../src/server/database";
 import { mapLegacy, type LegacySnapshot } from "./legacy-mapping";
+import type { WorkspaceData } from "../src/shared/types";
 if (process.env.NODE_ENV === "production" || process.env.VERCEL)
   throw new Error("QA server is forbidden in production.");
 const origin = "http://127.0.0.1:3462",
@@ -28,18 +29,48 @@ if (!setup.ok) throw new Error("Isolated QA setup failed.");
 const cookie = (setup.headers.get("set-cookie") ?? "").split(";")[0];
 let imported = 0;
 try {
-  const snapshot = JSON.parse(
-    await readFile(".local/migration/airtable-snapshot.json", "utf8"),
-  ) as LegacySnapshot;
-  await transact(db, (state) => {
-    const project = state.projects[0];
-    const mapped = mapLegacy(snapshot, project, state.members);
-    state.records.push(...mapped.records);
-    state.activities.push(...mapped.activities);
-    project.description =
-      "QA sandbox: changes are in memory only. Airtable is unchanged.";
-    imported = mapped.counts.leads;
-  });
+  const workspaceFile = process.argv.includes("--workspace-copy")
+    ? ".local/verification/qa-workspace.json"
+    : undefined;
+  if (workspaceFile) {
+    // Only the public workspace response is copied; no session, keys or private server state.
+    const workspace = JSON.parse(
+      await readFile(workspaceFile, "utf8"),
+    ) as WorkspaceData;
+    const sourceProject =
+      workspace.projects.find((p) => p.id === workspace.selectedProjectId) ??
+      workspace.projects[0];
+    if (!sourceProject) throw new Error("QA source project is missing.");
+    await transact(db, (state) => {
+      const project = state.projects[0],
+        member = state.members[0];
+      project.name = sourceProject.name;
+      project.description =
+        "QA snapshot: in-memory changes only. No production writes or outbound providers.";
+      state.records = workspace.records
+        .filter((r) => r.projectId === sourceProject.id)
+        .map((r) => ({
+          ...r,
+          projectId: project.id,
+          ownerId: r.ownerId ? member.id : null,
+        }));
+      state.activities = [];
+      imported = state.records.filter((r) => r.kind === "contact").length;
+    });
+  } else {
+    const snapshot = JSON.parse(
+      await readFile(".local/migration/airtable-snapshot.json", "utf8"),
+    ) as LegacySnapshot;
+    await transact(db, (state) => {
+      const project = state.projects[0];
+      const mapped = mapLegacy(snapshot, project, state.members);
+      state.records.push(...mapped.records);
+      state.activities.push(...mapped.activities);
+      project.description =
+        "QA sandbox: changes are in memory only. Airtable is unchanged.";
+      imported = mapped.counts.leads;
+    });
+  }
 } catch (error) {
   if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 }

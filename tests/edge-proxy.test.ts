@@ -27,6 +27,7 @@ test("hosting proxy preserves scoped API requests while stripping hosting creden
         Origin: "https://crm.example.invalid",
         Cookie: "hosting_private=synthetic",
         "x-site-owner": "private-host-identity",
+        "x-region": "us-east-1",
       },
       body: '{"fixture":true}',
     }),
@@ -40,6 +41,7 @@ test("hosting proxy preserves scoped API requests while stripping hosting creden
       );
       assert.equal(forwarded.headers.get("Cookie"), null);
       assert.equal(forwarded.headers.get("x-site-owner"), null);
+      assert.equal(forwarded.headers.get("x-region"), "ap-northeast-2");
       assert.equal(
         forwarded.headers.get("Authorization"),
         "Bearer synthetic-session",

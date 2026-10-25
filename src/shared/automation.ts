@@ -26,6 +26,26 @@ export function draftingPacket(
       receiptId: null,
       packets: [],
     };
+  const consumed = records.find(
+    (record) =>
+      record.projectId === projectId &&
+      record.kind === "knowledge" &&
+      record.data.stage === "drafts" &&
+      ["completed", "completed_with_limits"].includes(record.status) &&
+      (record.data.predecessorReceiptId === receipt.id ||
+        (Array.isArray(record.data.predecessorReceiptIds) &&
+          record.data.predecessorReceiptIds.includes(receipt.id))),
+  );
+  if (consumed)
+    return {
+      blocked: true,
+      alreadyProcessed: true,
+      reason:
+        "This research packet already has drafting output. Review existing drafts; do not create duplicates.",
+      receiptId: receipt.id,
+      draftReceiptId: consumed.id,
+      packets: [],
+    };
   const packets = (
     Array.isArray(receipt.data.packets) ? receipt.data.packets : []
   )
@@ -51,14 +71,15 @@ export function draftingPacket(
         contact.data.optedOut === true ||
         contact.data.doNotContact === true ||
         contact.data.sequenceClosed === true ||
-        contact.data.segment === "brand_deal" ||
+        contact.data.segment !== "owned_offer" ||
+        /^(not a fit|dead|do not contact)$/i.test(contact.status) ||
         EXPERIMENT_HANDLES.includes(
           String(contact.data.handle ?? "")
             .toLowerCase()
             .replace(/^@/, ""),
         ) ||
-        (typeof packet.contactVersion === "number" &&
-          packet.contactVersion !== contact.version)
+        typeof packet.contactVersion !== "number" ||
+        packet.contactVersion !== contact.version
       )
         return false;
       const facts = Array.isArray(packet.facts) ? packet.facts : [];

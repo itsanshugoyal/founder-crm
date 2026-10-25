@@ -31,6 +31,9 @@ export async function proxyEdge(
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  // Team Seven's database is in Seoul. Keep database-heavy execution beside it.
+  // This is server-owned routing, never a caller-selected header or permission.
+  headers.set("x-region", "ap-northeast-2");
   const forwarded = new Request(
     target,
     new Request(request, {
@@ -52,6 +55,7 @@ export async function proxyEdge(
       "X-Content-Type-Options",
       "X-Frame-Options",
       "Retry-After",
+      "x-sb-edge-region",
     ]) {
       const value = upstream.headers.get(name);
       if (value) responseHeaders.set(name, value);

@@ -84,6 +84,8 @@ export interface Readiness {
   pending: string[];
 }
 export interface Session {
+  /** Optional authenticated bootstrap. Never populated for anonymous requests. */
+  workspace?: WorkspaceData;
   authenticated: boolean;
   canCreateOwner: boolean;
   actor?: Member;
@@ -94,6 +96,7 @@ export interface Session {
   setupRequired?: boolean;
 }
 export interface WorkspaceData {
+  selectedProjectId?: string;
   projects: Project[];
   members: Member[];
   records: CrmRecord[];

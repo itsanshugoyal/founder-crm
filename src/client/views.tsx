@@ -67,6 +67,8 @@ import {
 } from "./ui";
 
 import { csvExport, mutate, downloadInvoice } from "./api";
+import { DraftReview, draftReviewNote } from "./DraftReview";
+import { draftPurpose } from "../shared/draft-purpose";
 
 export const label = (s: string) =>
   s.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -104,9 +106,9 @@ function PageHead({
   children?: ReactNode;
 }) {
   return (
-    <div className="page-head">
+    <header className="page-head">
       <div>
-        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+        <div className="eyebrow">{eyebrow || "PROJECT WORKSPACE"}</div>
         <h1>{title}</h1>
         <p>{description}</p>
       </div>
@@ -119,7 +121,7 @@ function PageHead({
           </Button>
         )}
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -222,6 +224,23 @@ export function TodayView() {
         text(b, "startsAt") || b.dueAt || "",
       ),
     );
+  const focusRecord =
+    due
+      .slice()
+      .sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""))[0] ||
+    replies[0] ||
+    drafts[0] ||
+    tasks[0] ||
+    meetings[0];
+  const focusType = due.length
+    ? "EARLIEST DUE WORK"
+    : replies.length
+      ? "NEEDS A REPLY"
+      : drafts.length
+        ? "DRAFT TO INSPECT"
+        : tasks.length
+          ? "OPEN WORK"
+          : "UPCOMING MEETING";
   const queues = [
     { id: "tasks", name: "Open work", count: tasks.length, icon: CheckCircle },
     { id: "replies", name: "Needs a reply", count: replies.length, icon: Tray },
@@ -259,54 +278,124 @@ export function TodayView() {
   const project = workspace.projects.find((p) => p.id === projectId);
   return (
     <>
-      <div className="today-page-head">
-        <div className="date-index">
-          <span>
-            {new Date()
-              .toLocaleDateString(undefined, { month: "short" })
-              .toUpperCase()}
-          </span>
-          <strong>{new Date().getDate().toString().padStart(2, "0")}</strong>
-          <span>
-            {new Date()
-              .toLocaleDateString(undefined, { weekday: "short" })
-              .toUpperCase()}
-          </span>
+      <header className="today-page-head daily-brief">
+        <div className="brief-main">
+          <div className="date-index">
+            <span>
+              {new Date()
+                .toLocaleDateString(undefined, { month: "short" })
+                .toUpperCase()}
+            </span>
+            <strong>{new Date().getDate().toString().padStart(2, "0")}</strong>
+            <span>
+              {new Date()
+                .toLocaleDateString(undefined, { weekday: "short" })
+                .toUpperCase()}
+            </span>
+          </div>
+          <div className="today-heading-copy">
+            <span className="eyebrow">
+              {project?.name || "Current project"} / DAILY BRIEF
+            </span>
+            <h1>Today’s Brief</h1>
+            <p>
+              {due.length > 0
+                ? `${due.length} ${due.length === 1 ? "commitment needs" : "commitments need"} attention by today.`
+                : "Review the work and conversations that need your attention."}
+            </p>
+            <div className="head-actions">
+              <Button onClick={() => openCreate("contact")}>
+                <Users size={16} />
+                Add person
+              </Button>
+              <Button tone="primary" onClick={() => openCreate("task")}>
+                <Plus size={16} />
+                New task
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="today-heading-copy">
-          <span className="eyebrow">
-            {project?.name || "Current project"} / ATTENTION INDEX
-          </span>
-          <h1>Today</h1>
-          <p>Open work, conversations, and decisions.</p>
+        <div className="brief-focus">
+          <span className="eyebrow">OPEN NEXT / {focusType}</span>
+          {focusRecord ? (
+            <button onClick={() => openRecord(focusRecord)}>
+              <strong>{focusRecord.title}</strong>
+              <span>
+                Open {modules[focusRecord.kind].singular.toLowerCase()}
+                <ArrowUpRight size={17} />
+              </span>
+            </button>
+          ) : (
+            <div className="brief-focus-empty">
+              <strong>No open review items</strong>
+              <span>
+                There are no open tasks, replies, drafts, or meetings.
+              </span>
+            </div>
+          )}
+          {focusRecord && (
+            <div className="brief-focus-meta">
+              <span>
+                {focusRecord.dueAt
+                  ? `Due ${dateLabel(focusRecord.dueAt)}`
+                  : focusRecord.kind === "meeting" &&
+                      text(focusRecord, "startsAt")
+                    ? `Starts ${dateLabel(text(focusRecord, "startsAt"))}`
+                    : "No due date recorded"}
+              </span>
+              <span>
+                {workspace.members.find(
+                  (member) => member.id === focusRecord.ownerId,
+                )?.name || "Unassigned"}
+              </span>
+            </div>
+          )}
         </div>
-        <div className="head-actions">
-          <Button onClick={() => openCreate("contact")}>
-            <Users size={16} />
-            Add person
-          </Button>
-          <Button tone="primary" onClick={() => openCreate("task")}>
-            <Plus size={16} />
-            New task
-          </Button>
-        </div>
-      </div>
+      </header>
       <div className="attention-strip">
-        <span>
+        <button
+          onClick={() => {
+            setQueue("tasks");
+            setDueOnly(true);
+          }}
+        >
           <Clock size={16} />
           <strong>{due.length}</strong> commitments due by today
-        </span>
-        <span>
+          <ArrowRight size={14} />
+        </button>
+        <button
+          onClick={() => {
+            setQueue("replies");
+            setDueOnly(false);
+          }}
+        >
+          <Tray size={16} />
+          <strong>{replies.length}</strong> need a reply
+          <ArrowRight size={14} />
+        </button>
+        <button
+          onClick={() => {
+            setQueue("drafts");
+            setDueOnly(false);
+          }}
+        >
+          <NotePencil size={16} />
+          <strong>{drafts.length}</strong> drafts to review
+          <ArrowRight size={14} />
+        </button>
+        <button onClick={() => setPage("pipeline")}>
           <Kanban size={16} />
           <strong>{opportunities.length}</strong> open opportunities
-        </span>
-        <button onClick={() => setPage("pipeline")}>
-          View pipeline
           <ArrowRight size={14} />
         </button>
       </div>
       <div className="today-columns">
         <section className="panel today-queue">
+          <div className="queue-intro">
+            <span className="eyebrow">THE REVIEW DESK</span>
+            <h2>What needs a decision?</h2>
+            <p>Open a record to review its context and next action.</p>
+          </div>
           <div className="queue-tabs" role="group" aria-label="Today queues">
             {queues.map((item) => (
               <button
@@ -496,8 +585,8 @@ export function TodayView() {
         <aside className="today-aside">
           <section className="project-overview index-section">
             <div className="index-heading">
-              <span>01</span>
-              <h2>Project index</h2>
+              <span>PROJECT</span>
+              <h2>At a glance</h2>
             </div>
             <div className="project-overview-name">
               <span className="project-symbol">
@@ -532,7 +621,7 @@ export function TodayView() {
           </section>
           <section className="compact-panel index-section">
             <div className="index-heading">
-              <span>02</span>
+              <span>NEXT</span>
               <h2>Next meetings</h2>
               <strong>{meetings.length}</strong>
             </div>
@@ -575,14 +664,15 @@ export function TodayView() {
       </div>
       <section className="panel activity-panel today-activity">
         <div className="index-heading activity-heading">
-          <span>03</span>
-          <h2>Activity log</h2>
+          <span>LOG</span>
+          <h2>Recent activity</h2>
         </div>
         <ActivityList
           activities={workspace.activities
             .slice()
             .sort((a, b) => b.at.localeCompare(a.at))
             .slice(0, 5)}
+          records={records}
         />
       </section>
     </>
@@ -593,16 +683,50 @@ function CheckSquareIcon() {
   return <CheckCircle size={25} />;
 }
 
+type ActivityEntry = {
+  id: string;
+  actor: string;
+  recordId?: string | null;
+  detail: string;
+  at: string;
+  action: string;
+};
+
+function activitySummary(activity: ActivityEntry, records: CrmRecord[]) {
+  const related = records.find((record) => record.id === activity.recordId);
+  if (activity.action.startsWith("legacy_")) {
+    const kind = activity.action.slice(7).replaceAll("_", " ");
+    const action =
+      kind === "created"
+        ? "created a contact record"
+        : kind === "updated"
+          ? "updated a contact record"
+          : kind === "note"
+            ? "added a note"
+            : `recorded ${kind} activity`;
+    return `${action}${related ? ` for ${related.title}` : ""} in the previous CRM.`;
+  }
+  const detail = activity.detail.trim();
+  if (detail.startsWith("{") || detail.startsWith("[")) {
+    try {
+      JSON.parse(detail);
+      return `${label(activity.action)}${related ? ` for ${related.title}` : ""}.`;
+    } catch {
+      // A normal note may begin with punctuation; leave it unchanged.
+    }
+  }
+  return (
+    detail ||
+    `${label(activity.action)}${related ? ` for ${related.title}` : ""}.`
+  );
+}
+
 function ActivityList({
   activities,
+  records = [],
 }: {
-  activities: {
-    id: string;
-    actor: string;
-    detail: string;
-    at: string;
-    action: string;
-  }[];
+  activities: ActivityEntry[];
+  records?: CrmRecord[];
 }) {
   return activities.length ? (
     <div className="activity-list">
@@ -611,8 +735,7 @@ function ActivityList({
           <span className="activity-dot" />
           <div>
             <p>
-              <strong>{a.actor}</strong>{" "}
-              {a.detail || a.action.replaceAll("_", " ")}
+              <strong>{a.actor}</strong> {activitySummary(a, records)}
             </p>
             <small>
               {new Date(a.at).toLocaleString(undefined, {
@@ -831,8 +954,14 @@ export function RecordsView({
             title={`No ${mod.label.toLowerCase()} yet`}
             description={
               kind === "contact"
-                ? "Add a contact with an observed identity, owner, and next action."
-                : `Create your first ${mod.singular} and keep every next step in view.`
+                ? "Add a person with a known identity. Leave unverified details blank until you have evidence."
+                : kind === "knowledge"
+                  ? "Save project guidance or research with its source and date. Link person-specific research to a contact."
+                  : kind === "automation"
+                    ? "Queue a job to prepare work for review. A completed receipt confirms what actually ran."
+                    : kind === "task"
+                      ? "Add a concrete next action, owner, and due date to start the work list."
+                      : `Create a ${mod.singular} to track the next step.`
             }
             action={`Add ${mod.singular}`}
             onAction={() => openCreate(kind)}
@@ -1092,6 +1221,10 @@ export function RecordsView({
 export function PeopleView() {
   const [tab, setTab] = useState<"contact" | "company">("contact");
   const records = useRecords("contact");
+  const followUpsDue = records.filter(
+    (record) => record.dueAt && new Date(record.dueAt) <= new Date(),
+  ).length;
+  const unassigned = records.filter((record) => !record.ownerId).length;
   const duplicates = useMemo(() => {
     const seen = new Set<string>();
     return records.filter((r) => {
@@ -1117,9 +1250,18 @@ export function PeopleView() {
   return (
     <>
       <PageHead
+        eyebrow="RELATIONSHIP WORKSPACE"
         title="People"
-        description="Contacts, evidence, ownership, and follow-ups for this project."
+        description="A working record of who you know, what you know, and when to follow up."
       />
+      <div className="directory-summary" aria-label="Relationship overview">
+        <span>
+          <strong>{followUpsDue}</strong> follow-ups due
+        </span>
+        <span>
+          <strong>{unassigned}</strong> without an owner
+        </span>
+      </div>
       <Tabs
         items={[
           ["contact", "People"],
@@ -1183,6 +1325,7 @@ export function PipelineView() {
   return (
     <>
       <PageHead
+        eyebrow="OPPORTUNITY BOARD"
         title="Pipeline"
         description="Track opportunities by stage, value, and next action."
         action="New opportunity"
@@ -1318,7 +1461,12 @@ export function PipelineView() {
 
 export function WorkView() {
   const [tab, setTab] = useState("task");
+  const { openRecord, openCreate } = useCRM();
   const records = useRecords();
+  const openTasks = records
+    .filter((record) => record.kind === "task" && !isComplete(record))
+    .sort((a, b) => (a.dueAt || "9999").localeCompare(b.dueAt || "9999"));
+  const nextTask = openTasks[0];
   const sections: { kind: RecordKind; icon: typeof CheckCircle }[] = [
     { kind: "task", icon: CheckCircle },
     { kind: "content", icon: NotePencil },
@@ -1331,9 +1479,42 @@ export function WorkView() {
   return (
     <>
       <PageHead
+        eyebrow="EXECUTION PLAN"
         title="Work"
-        description="Tasks, marketing, meetings, and client delivery for this project."
+        description="Commitments, campaigns, meetings, and the next concrete action."
       />
+      <section className="work-focus" aria-label="Next open task">
+        <div className="work-focus-index">
+          <span>UP NEXT</span>
+          <CheckCircle size={27} />
+        </div>
+        <div className="work-focus-copy">
+          <span className="eyebrow">
+            EXECUTION PLAN · {openTasks.length} OPEN{" "}
+            {openTasks.length === 1 ? "TASK" : "TASKS"}
+          </span>
+          <h2>{nextTask?.title || "Set your next action"}</h2>
+          <p>
+            {nextTask
+              ? `${nextTask.dueAt ? `Due ${dateLabel(nextTask.dueAt)} · ` : ""}${text(nextTask, "description") || "Open the task to review its details."}`
+              : "Create a task with an owner and due date to give this project a clear starting point."}
+          </p>
+        </div>
+        <Button
+          tone="primary"
+          onClick={() => (nextTask ? openRecord(nextTask) : openCreate("task"))}
+        >
+          {nextTask ? "Open task" : "Create task"}
+          <ArrowUpRight size={16} />
+        </Button>
+      </section>
+      <div className="workspace-section-heading">
+        <div>
+          <span className="eyebrow">WORKSTREAMS</span>
+          <h2>Choose what to work on</h2>
+        </div>
+        <p>Each workstream has its own records, owners, and progress.</p>
+      </div>
       <div
         className="work-navigation"
         role="group"
@@ -1387,6 +1568,7 @@ export function MoneyView() {
   return (
     <>
       <PageHead
+        eyebrow="FINANCIAL RECORDS"
         title="Money"
         description="Manage invoices, proposals, payments, and expenses by currency."
       />
@@ -1579,12 +1761,42 @@ function PlaybooksView() {
 }
 
 export function KnowledgeView() {
+  const records = useRecords("knowledge");
+  const linked = records.filter((record) => Boolean(record.contactId)).length;
   return (
-    <RecordsView
-      kind="knowledge"
-      title="Knowledge"
-      description="Project instructions, research, processes, and decisions."
-    />
+    <>
+      <PageHead
+        eyebrow="RESEARCH LIBRARY"
+        title="Knowledge"
+        description="The source-backed notes and decisions behind your work."
+      />
+      <section className="library-brief" aria-label="Research library overview">
+        <div>
+          <span className="eyebrow">THE RESEARCH LIBRARY</span>
+          <h2>Research you can trace</h2>
+          <p>
+            Save the source and date with each finding. Open linked person
+            research from draft review.
+          </p>
+        </div>
+        <div className="library-count">
+          <strong>{records.length}</strong>
+          <span>
+            saved {records.length === 1 ? "note" : "notes"}
+            <br />
+            {linked} linked to people
+          </span>
+        </div>
+      </section>
+      <div className="workspace-section-heading">
+        <div>
+          <span className="eyebrow">CATALOGUE</span>
+          <h2>Saved knowledge</h2>
+        </div>
+        <p>Search by title or recorded detail.</p>
+      </div>
+      <RecordsView kind="knowledge" hideHead />
+    </>
   );
 }
 
@@ -1593,8 +1805,9 @@ export function AutomationView() {
   return (
     <>
       <PageHead
+        eyebrow="PREPARED WORK"
         title="Automation"
-        description="Queue Codex jobs and review their status, outputs, and receipts."
+        description="Queue Codex work and inspect the recorded output and receipt."
       />
       <div className="runtime-banner">
         <span className="runtime-icon">
@@ -1629,9 +1842,14 @@ export function AutomationView() {
   );
 }
 
+const INBOX_QUEUE_IDS = ["action", "waiting", "drafts", "replies", "all"];
+
 export function InboxView() {
   const { openCreate, openRecord, workspace, setPage } = useCRM();
-  const [tab, setTab] = useState("action");
+  const [tabChoice, setTab] = useState(() => {
+    const requested = new URLSearchParams(location.search).get("inbox") || "";
+    return INBOX_QUEUE_IDS.includes(requested) ? requested : "";
+  });
   const [search, setSearch] = useState("");
   const records = useRecords();
   const conversations = records.filter((r) => r.kind === "conversation");
@@ -1642,11 +1860,36 @@ export function InboxView() {
     (r) =>
       r.kind === "message" && text(r, "direction").toLowerCase() === "inbound",
   );
+  const needsReply = conversations.filter((r) =>
+    statusIs(r, "Open", "Needs action"),
+  );
+  const tab =
+    tabChoice ||
+    (needsReply.length ? "action" : drafts.length ? "drafts" : "action");
+  useEffect(() => {
+    const url = new URL(location.href);
+    if (url.searchParams.get("inbox") !== tab) {
+      url.searchParams.set("inbox", tab);
+      history.replaceState(
+        history.state,
+        "",
+        url.pathname + url.search + url.hash,
+      );
+    }
+  }, [tab]);
+  useEffect(() => {
+    const syncQueue = () => {
+      const requested = new URLSearchParams(location.search).get("inbox") || "";
+      setTab(INBOX_QUEUE_IDS.includes(requested) ? requested : "");
+    };
+    window.addEventListener("popstate", syncQueue);
+    return () => window.removeEventListener("popstate", syncQueue);
+  }, []);
   const queues = [
     {
       id: "action",
       label: "Needs a reply",
-      records: conversations.filter((r) => statusIs(r, "Open", "Needs action")),
+      records: needsReply,
       icon: Tray,
     },
     {
@@ -1682,6 +1925,7 @@ export function InboxView() {
   return (
     <>
       <PageHead
+        eyebrow="MESSAGE REVIEW"
         title="Inbox"
         description="Review conversations, prepare drafts, and track the next response."
         action={tab === "drafts" ? "New draft" : "Add conversation"}
@@ -1730,22 +1974,33 @@ export function InboxView() {
           </div>
         </aside>
         <section className="panel inbox-workspace">
-          <div className="inbox-list-heading">
-            <h2>
-              {selectedQueue.label}
-              <span className="count">{shown.length}</span>
-            </h2>
-            <div className="search-input">
-              <MagnifyingGlass size={16} />
-              <input
-                aria-label="Search inbox queue"
-                placeholder="Search this queue…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          {tab !== "drafts" && (
+            <div className="inbox-list-heading">
+              <h2>
+                {selectedQueue.label}
+                <span className="count">{shown.length}</span>
+              </h2>
+              <div className="search-input">
+                <MagnifyingGlass size={16} />
+                <input
+                  aria-label="Search inbox queue"
+                  placeholder="Search this queue…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
-          {shown.length ? (
+          )}
+          {tab === "drafts" ? (
+            <DraftReview
+              drafts={drafts}
+              contacts={records.filter((record) => record.kind === "contact")}
+              knowledge={records.filter(
+                (record) => record.kind === "knowledge",
+              )}
+              openRecord={openRecord}
+            />
+          ) : shown.length ? (
             <div className="inbox-list">
               {shown.map((r) => {
                 const contact = records.find((c) => c.id === r.contactId);
@@ -1838,6 +2093,7 @@ export function ReportsView() {
   return (
     <>
       <PageHead
+        eyebrow="PROJECT SIGNALS"
         title="Reports"
         description="Current project counts, pipeline stages, and record completeness."
       />
@@ -2006,415 +2262,439 @@ export function SettingsView() {
   return (
     <>
       <PageHead
+        eyebrow="PROJECT SETUP"
         title="Settings"
-        description="Manage project settings, team access, connections, and Codex tokens."
+        description="Set up the project, decide who has access, and manage connected tools."
       />
-      <Tabs
-        items={[
-          ["project", "Project"],
-          ["members", "People & access"],
-          ["integrations", "Connections"],
-          ["codex", "Codex & MCP"],
-        ]}
-        value={tab}
-        onChange={(v) => {
-          setTab(v);
-          setError("");
-        }}
-      />
-      <ErrorBox error={error} />
-      {tab === "project" && (
-        <div className="settings-layout">
-          <form
-            className="panel settings-panel"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(async () => {
-                await mutate(
-                  csrf,
-                  projectId,
-                  "update_project",
-                  {
-                    name,
-                    description,
-                    settings: {
-                      dailySendLimit: Number(daily),
-                      hourlySendLimit: Number(hourly),
-                    },
-                  },
-                  undefined,
-                  project?.version,
-                );
-                await refresh();
-                toast("Project settings saved");
-              });
+      <div className="settings-workbench">
+        <aside className="settings-menu">
+          <span className="eyebrow">SETUP SECTIONS</span>
+          <h2>Keep the workspace yours.</h2>
+          <p>
+            Choose a section to review its settings. Changes take effect when
+            you save them.
+          </p>
+          <Tabs
+            items={[
+              ["project", "Project"],
+              ["members", "People & access"],
+              ["integrations", "Connections"],
+              ["codex", "Codex & MCP"],
+            ]}
+            value={tab}
+            onChange={(v) => {
+              setTab(v);
+              setError("");
             }}
-          >
-            <SectionHead title="Project details" />
-            <p className="muted small-copy">
-              Update the project name, description, and individual send limits.
-            </p>
-            <div className="field">
-              <label htmlFor="settings-name">Project name</label>
-              <input
-                id="settings-name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={!owner}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="settings-description">Description</label>
-              <textarea
-                id="settings-description"
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={!owner}
-              />
-            </div>
-            <div className="settings-divider" />
-            <h3>Individual send limits</h3>
-            <p className="muted small-copy">
-              Caps apply to manual send confirmations as well as supported
-              provider sends.
-            </p>
-            <div className="form-grid">
-              <div className="field">
-                <label htmlFor="limit-daily">Per day</label>
-                <input
-                  id="limit-daily"
-                  type="number"
-                  min="1"
-                  max="100"
-                  required
-                  value={daily}
-                  onChange={(e) => setDaily(e.target.value)}
-                  disabled={!owner}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="limit-hourly">Per hour</label>
-                <input
-                  id="limit-hourly"
-                  type="number"
-                  min="1"
-                  max="20"
-                  required
-                  value={hourly}
-                  onChange={(e) => setHourly(e.target.value)}
-                  disabled={!owner}
-                />
-              </div>
-            </div>
-            {owner ? (
-              <Button tone="primary" disabled={busy}>
-                {busy ? "Saving…" : "Save project settings"}
-              </Button>
-            ) : (
-              <p className="form-note">
-                Only project owners and admins can change these settings.
-              </p>
-            )}
-          </form>
-          <aside className="settings-aside">
-            <ShieldCheck size={29} />
-            <h3>Project access</h3>
-            <p>
-              Members see the projects they have access to. Codex tokens are
-              scoped to one project and remain revocable, with a fixed lifetime
-              or access until revoked.
-            </p>
-            <dl>
-              <dt>Storage</dt>
-              <dd>{workspace.readiness.sourceOfTruth}</dd>
-              <dt>Mode</dt>
-              <dd>{label(workspace.readiness.mode)}</dd>
-            </dl>
-          </aside>
-        </div>
-      )}
-      {tab === "members" && (
-        <section className="panel">
-          <div className="settings-section-head">
-            <SectionHead
-              title="Project members"
-              count={
-                workspace.members.filter((m) =>
-                  m.projectIds.includes(projectId),
-                ).length
-              }
-            />
-            {owner && (
-              <Button
-                tone="primary"
-                onClick={() => {
-                  setResultLink("");
-                  setInvite(true);
+          />
+        </aside>
+        <div className="settings-content">
+          <ErrorBox error={error} />
+          {tab === "project" && (
+            <div className="settings-layout">
+              <form
+                className="panel settings-panel"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void run(async () => {
+                    await mutate(
+                      csrf,
+                      projectId,
+                      "update_project",
+                      {
+                        name,
+                        description,
+                        settings: {
+                          dailySendLimit: Number(daily),
+                          hourlySendLimit: Number(hourly),
+                        },
+                      },
+                      undefined,
+                      project?.version,
+                    );
+                    await refresh();
+                    toast("Project settings saved");
+                  });
                 }}
               >
-                <Plus size={16} />
-                Invite member
-              </Button>
-            )}
-          </div>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Member</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Project access</th>
-                </tr>
-              </thead>
-              <tbody>
-                {workspace.members
-                  .filter((m) => m.projectIds.includes(projectId))
-                  .map((m) => (
-                    <tr key={m.id}>
-                      <td>
-                        <span className="owner-cell">
-                          <span className="avatar">{initials(m.name)}</span>
-                          <strong>{m.name}</strong>
-                        </span>
-                      </td>
-                      <td>{m.email || "Not provided"}</td>
-                      <td>
-                        <Badge>{label(m.role)}</Badge>
-                      </td>
-                      <td>
-                        {workspace.projects
-                          .filter((p) => m.projectIds.includes(p.id))
-                          .map((p) => p.name)
-                          .join(", ")}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="panel-footnote">
-            Invitations create a private link. No email is sent automatically.
-            Send the link to the intended teammate yourself.
-          </p>
-        </section>
-      )}
-      {tab === "integrations" && (
-        <>
-          <div className="connections-toolbar">
-            <div>
-              <strong>Connect your inbox and calendar</strong>
-              <p>
-                Codex connections and CRM connections are shown separately. CRM
-                accounts require their own authorization.
-              </p>
-            </div>
-            {owner && (
-              <div className="connect-controls">
-                <select
-                  aria-label="Provider to connect"
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
-                >
-                  <option value="gmail">Gmail</option>
-                  <option value="googlecalendar">Google Calendar</option>
-                  <option value="instagram">Instagram</option>
-                </select>
-                <Button
-                  tone="primary"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      if (
-                        workspace.integrations.some(
-                          (i) =>
-                            i.id === "setup-" + provider && i.setupRequired,
-                        )
-                      ) {
-                        setSetupOpen(true);
-                        return;
-                      }
-                      const result = await act("connect_provider", {
-                        provider,
-                      });
-                      if (result.url && safeUrl(String(result.url)))
-                        location.assign(String(result.url));
-                    })
-                  }
-                >
-                  <LinkSimple size={16} />
-                  Connect account
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="connections-grid">
-            {workspace.integrations.map((i) => (
-              <section className="panel integration-panel" key={i.id}>
-                <div className="integration-heading">
-                  <span className="integration-icon">
-                    {initials(i.provider)}
-                  </span>
-                  <Badge>{label(i.status)}</Badge>
+                <SectionHead title="Project details" />
+                <p className="muted small-copy">
+                  Update the project name, description, and individual send
+                  limits.
+                </p>
+                <div className="field">
+                  <label htmlFor="settings-name">Project name</label>
+                  <input
+                    id="settings-name"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={!owner}
+                  />
                 </div>
-                <h2>{i.label}</h2>
-                <p>{i.reason || "Connection status reported by the server."}</p>
-                {i.accountId && (
-                  <span className="small-copy">Account: {i.accountId}</span>
-                )}
-                <div className="integration-capabilities">
-                  {i.capabilities.map((c) => (
-                    <span key={c}>{label(c)}</span>
-                  ))}
+                <div className="field">
+                  <label htmlFor="settings-description">Description</label>
+                  <textarea
+                    id="settings-description"
+                    rows={4}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    disabled={!owner}
+                  />
                 </div>
-                {i.status !== "connected" && (
-                  <div className="connection-pending">
-                    <WarningCircle size={17} />
-                    {i.provider === "mcp"
-                      ? "Connect Codex using a project token"
-                      : i.setupRequired
-                        ? "Connection setup needed · choose Connect account"
-                        : i.mode === "codex"
-                          ? "Refresh this connection in Codex"
-                          : "Authorize and verify this account"}
+                <div className="settings-divider" />
+                <h3>Individual send limits</h3>
+                <p className="muted small-copy">
+                  Caps apply to manual send confirmations as well as supported
+                  provider sends.
+                </p>
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="limit-daily">Per day</label>
+                    <input
+                      id="limit-daily"
+                      type="number"
+                      min="1"
+                      max="100"
+                      required
+                      value={daily}
+                      onChange={(e) => setDaily(e.target.value)}
+                      disabled={!owner}
+                    />
                   </div>
+                  <div className="field">
+                    <label htmlFor="limit-hourly">Per hour</label>
+                    <input
+                      id="limit-hourly"
+                      type="number"
+                      min="1"
+                      max="20"
+                      required
+                      value={hourly}
+                      onChange={(e) => setHourly(e.target.value)}
+                      disabled={!owner}
+                    />
+                  </div>
+                </div>
+                {owner ? (
+                  <Button tone="primary" disabled={busy}>
+                    {busy ? "Saving…" : "Save project settings"}
+                  </Button>
+                ) : (
+                  <p className="form-note">
+                    Only project owners and admins can change these settings.
+                  </p>
                 )}
-                {i.accountId && (
-                  <div className="provider-actions">
+              </form>
+              <aside className="settings-aside">
+                <ShieldCheck size={29} />
+                <h3>Project access</h3>
+                <p>
+                  Members see the projects they have access to. Codex tokens are
+                  scoped to one project and remain revocable, with a fixed
+                  lifetime or access until revoked.
+                </p>
+                <dl>
+                  <dt>Storage</dt>
+                  <dd>{workspace.readiness.sourceOfTruth}</dd>
+                  <dt>Mode</dt>
+                  <dd>{label(workspace.readiness.mode)}</dd>
+                </dl>
+              </aside>
+            </div>
+          )}
+          {tab === "members" && (
+            <section className="panel">
+              <div className="settings-section-head">
+                <SectionHead
+                  title="Project members"
+                  count={
+                    workspace.members.filter((m) =>
+                      m.projectIds.includes(projectId),
+                    ).length
+                  }
+                />
+                {owner && (
+                  <Button
+                    tone="primary"
+                    onClick={() => {
+                      setResultLink("");
+                      setInvite(true);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Invite member
+                  </Button>
+                )}
+              </div>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Member</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Project access</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspace.members
+                      .filter((m) => m.projectIds.includes(projectId))
+                      .map((m) => (
+                        <tr key={m.id}>
+                          <td>
+                            <span className="owner-cell">
+                              <span className="avatar">{initials(m.name)}</span>
+                              <strong>{m.name}</strong>
+                            </span>
+                          </td>
+                          <td>{m.email || "Not provided"}</td>
+                          <td>
+                            <Badge>{label(m.role)}</Badge>
+                          </td>
+                          <td>
+                            {workspace.projects
+                              .filter((p) => m.projectIds.includes(p.id))
+                              .map((p) => p.name)
+                              .join(", ")}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="panel-footnote">
+                Invitations create a private link. No email is sent
+                automatically. Send the link to the intended teammate yourself.
+              </p>
+            </section>
+          )}
+          {tab === "integrations" && (
+            <>
+              <div className="connections-toolbar">
+                <div>
+                  <strong>Connect your inbox and calendar</strong>
+                  <p>
+                    Codex connections and CRM connections are shown separately.
+                    CRM accounts require their own authorization.
+                  </p>
+                </div>
+                {owner && (
+                  <div className="connect-controls">
+                    <select
+                      aria-label="Provider to connect"
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                    >
+                      <option value="gmail">Gmail</option>
+                      <option value="googlecalendar">Google Calendar</option>
+                      <option value="instagram">Instagram</option>
+                    </select>
                     <Button
+                      tone="primary"
                       disabled={busy}
                       onClick={() =>
                         void run(async () => {
-                          await act("provider_connection_status", {
-                            connectionId: i.id,
+                          if (
+                            workspace.integrations.some(
+                              (i) =>
+                                i.id === "setup-" + provider && i.setupRequired,
+                            )
+                          ) {
+                            setSetupOpen(true);
+                            return;
+                          }
+                          const result = await act("connect_provider", {
+                            provider,
                           });
+                          if (result.url && safeUrl(String(result.url)))
+                            location.assign(String(result.url));
                         })
                       }
                     >
-                      Check connection
+                      <LinkSimple size={16} />
+                      Connect account
                     </Button>
-                    {i.status === "connected" && (
-                      <Button
-                        disabled={busy}
-                        onClick={() =>
-                          void run(async () => {
-                            await act(
-                              i.provider === "googlecalendar"
-                                ? "sync_calendar"
-                                : i.provider === "instagram"
-                                  ? "sync_instagram"
-                                  : "fetch_inbox",
-                              { connectionId: i.id },
-                            );
-                          })
-                        }
-                      >
-                        <Tray size={15} />
-                        {i.provider === "googlecalendar"
-                          ? "Sync calendar"
-                          : i.provider === "instagram"
-                            ? "Sync conversations"
-                            : "Fetch inbox"}
-                      </Button>
+                  </div>
+                )}
+              </div>
+              <div className="connections-grid">
+                {workspace.integrations.map((i) => (
+                  <section className="panel integration-panel" key={i.id}>
+                    <div className="integration-heading">
+                      <span className="integration-icon">
+                        {initials(i.provider)}
+                      </span>
+                      <Badge>{label(i.status)}</Badge>
+                    </div>
+                    <h2>{i.label}</h2>
+                    <p>
+                      {i.reason || "Connection status reported by the server."}
+                    </p>
+                    {i.accountId && (
+                      <span className="small-copy">Account: {i.accountId}</span>
                     )}
+                    <div className="integration-capabilities">
+                      {i.capabilities.map((c) => (
+                        <span key={c}>{label(c)}</span>
+                      ))}
+                    </div>
+                    {i.status !== "connected" && (
+                      <div className="connection-pending">
+                        <WarningCircle size={17} />
+                        {i.provider === "mcp"
+                          ? "Connect Codex using a project token"
+                          : i.setupRequired
+                            ? "Connection setup needed · choose Connect account"
+                            : i.mode === "codex"
+                              ? "Refresh this connection in Codex"
+                              : "Authorize and verify this account"}
+                      </div>
+                    )}
+                    {i.accountId && (
+                      <div className="provider-actions">
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            void run(async () => {
+                              await act("provider_connection_status", {
+                                connectionId: i.id,
+                              });
+                            })
+                          }
+                        >
+                          Check connection
+                        </Button>
+                        {i.status === "connected" && (
+                          <Button
+                            disabled={busy}
+                            onClick={() =>
+                              void run(async () => {
+                                await act(
+                                  i.provider === "googlecalendar"
+                                    ? "sync_calendar"
+                                    : i.provider === "instagram"
+                                      ? "sync_instagram"
+                                      : "fetch_inbox",
+                                  { connectionId: i.id },
+                                );
+                              })
+                            }
+                          >
+                            <Tray size={15} />
+                            {i.provider === "googlecalendar"
+                              ? "Sync calendar"
+                              : i.provider === "instagram"
+                                ? "Sync conversations"
+                                : "Fetch inbox"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </section>
+                ))}
+                {!workspace.integrations.length && (
+                  <Empty
+                    title="No connections configured"
+                    description="An administrator can connect supported accounts. The workspace’s manual workflows are available now."
+                  />
+                )}
+              </div>
+            </>
+          )}
+          {tab === "codex" && (
+            <div className="settings-layout">
+              <section className="panel settings-panel">
+                <SectionHead title="Codex access" />
+                <p>
+                  Use a project token to let your local Codex runtime read
+                  project context and prepare changes.
+                </p>
+                <div className="permission-list">
+                  <div>
+                    <CheckCircle size={19} />
+                    <span>
+                      Read this project and its operating instructions
+                    </span>
+                  </div>
+                  <div>
+                    <CheckCircle size={19} />
+                    <span>
+                      Research, prepare drafts, and queue proposed work
+                    </span>
+                  </div>
+                  <div>
+                    <ShieldCheck size={19} />
+                    <span>
+                      Human approval and individual sending remain in Founder
+                    </span>
+                  </div>
+                </div>
+                <div className="inline-notice">
+                  <WarningCircle size={18} />
+                  {mcpConnected
+                    ? "Connected. Codex has successfully used this project’s MCP tools."
+                    : "Not verified yet. Connect Codex with a project token, then run a connection check."}
+                </div>
+                {owner && (
+                  <Button
+                    tone="primary"
+                    onClick={() => {
+                      setToken("");
+                      setTokenOpen(true);
+                    }}
+                  >
+                    <LinkSimple size={16} />
+                    Create project token
+                  </Button>
+                )}
+                {owner && projectTokens.length > 0 && (
+                  <div className="permission-list" aria-label="Project tokens">
+                    {projectTokens.map((item) => (
+                      <div key={item.id}>
+                        <span>
+                          {item.label} ·{" "}
+                          {item.expires === null
+                            ? "Never expires"
+                            : "Expires " +
+                              new Date(item.expires).toLocaleDateString(
+                                "en-IN",
+                              )}
+                        </span>
+                        <Button
+                          disabled={busy}
+                          onClick={() =>
+                            void run(async () => {
+                              await act("revoke_mcp_token", {
+                                tokenId: item.id,
+                              });
+                              const result = await act("list_mcp_tokens", {});
+                              setProjectTokens(
+                                (result.tokens ?? []) as typeof projectTokens,
+                              );
+                            })
+                          }
+                        >
+                          Revoke
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </section>
-            ))}
-            {!workspace.integrations.length && (
-              <Empty
-                title="No connections configured"
-                description="An administrator can connect supported accounts. The workspace’s manual workflows are available now."
-              />
-            )}
-          </div>
-        </>
-      )}
-      {tab === "codex" && (
-        <div className="settings-layout">
-          <section className="panel settings-panel">
-            <SectionHead title="Codex access" />
-            <p>
-              Use a project token to let your local Codex runtime read project
-              context and prepare changes.
-            </p>
-            <div className="permission-list">
-              <div>
-                <CheckCircle size={19} />
-                <span>Read this project and its operating instructions</span>
-              </div>
-              <div>
-                <CheckCircle size={19} />
-                <span>Research, prepare drafts, and queue proposed work</span>
-              </div>
-              <div>
-                <ShieldCheck size={19} />
-                <span>
-                  Human approval and individual sending remain in Founder
-                </span>
-              </div>
+              <aside className="settings-aside">
+                <BookOpen size={28} />
+                <h3>Project instructions</h3>
+                <p>
+                  Add project instructions in Knowledge. Codex should read the
+                  latest version before preparing work. Review receipts in
+                  Automation and record history.
+                </p>
+              </aside>
             </div>
-            <div className="inline-notice">
-              <WarningCircle size={18} />
-              {mcpConnected
-                ? "Connected. Codex has successfully used this project’s MCP tools."
-                : "Not verified yet. Connect Codex with a project token, then run a connection check."}
-            </div>
-            {owner && (
-              <Button
-                tone="primary"
-                onClick={() => {
-                  setToken("");
-                  setTokenOpen(true);
-                }}
-              >
-                <LinkSimple size={16} />
-                Create project token
-              </Button>
-            )}
-            {owner && projectTokens.length > 0 && (
-              <div className="permission-list" aria-label="Project tokens">
-                {projectTokens.map((item) => (
-                  <div key={item.id}>
-                    <span>
-                      {item.label} ·{" "}
-                      {item.expires === null
-                        ? "Never expires"
-                        : "Expires " +
-                          new Date(item.expires).toLocaleDateString("en-IN")}
-                    </span>
-                    <Button
-                      disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          await act("revoke_mcp_token", { tokenId: item.id });
-                          const result = await act("list_mcp_tokens", {});
-                          setProjectTokens(
-                            (result.tokens ?? []) as typeof projectTokens,
-                          );
-                        })
-                      }
-                    >
-                      Revoke
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-          <aside className="settings-aside">
-            <BookOpen size={28} />
-            <h3>Project instructions</h3>
-            <p>
-              Add project instructions in Knowledge. Codex should read the
-              latest version before preparing work. Review receipts in
-              Automation and record history.
-            </p>
-          </aside>
+          )}
         </div>
-      )}
+      </div>
       <Modal
         open={invite}
         onClose={() => setInvite(false)}
@@ -2791,6 +3071,7 @@ export function RecordDetail({
                   .filter((a) => a.recordId === r.id)
                   .slice()
                   .reverse()}
+                records={[r]}
               />
             ) : tab === "drafts" ? (
               <>
@@ -2926,6 +3207,40 @@ export function RecordDetail({
                           "Account context not specified"}
                       </span>
                     </div>
+                    <dl className="detail-fields">
+                      <div>
+                        <dt>Recipient</dt>
+                        <dd>
+                          {text(r, "recipient") ||
+                            "Unknown — verify before approval"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Message purpose</dt>
+                        <dd>
+                          {
+                            {
+                              instagram: "Instagram first message",
+                              connection: "LinkedIn connection request",
+                              accepted: "LinkedIn after acceptance",
+                              reply: "Reply to a conversation",
+                              followup: "Follow-up message",
+                              other: "Other draft — verify intended use",
+                            }[draftPurpose(r)]
+                          }
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="draft-review-note">
+                      <ShieldCheck size={17} aria-hidden="true" />
+                      {draftReviewNote(contact, r)}
+                    </p>
+                    {draftPurpose(r) === "accepted" && (
+                      <p className="form-note">
+                        Confirm the connection was accepted before using this
+                        message. A saved draft is not proof of acceptance.
+                      </p>
+                    )}
                     {text(r, "subject") && (
                       <h3 className="draft-subject">{text(r, "subject")}</h3>
                     )}

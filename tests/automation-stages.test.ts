@@ -36,6 +36,7 @@ test("drafting requires a completed fresh same-project source packet and recheck
       packets: [
         {
           contactId: contact.id,
+          contactVersion: contact.version,
           draftEligible: true,
           facts: [
             {
@@ -56,6 +57,18 @@ test("drafting requires a completed fresh same-project source packet and recheck
     1,
   );
   assert(draftingPacket([contact, receipt], "other", at).blocked);
+  const consumed: CrmRecord = {
+    ...receipt,
+    id: "draft-receipt",
+    data: { stage: "drafts", predecessorReceiptId: receipt.id },
+  };
+  const repeat = draftingPacket([contact, receipt, consumed], "project", at);
+  assert(repeat.blocked);
+  assert.equal(repeat.alreadyProcessed, true);
+  assert.equal(repeat.packets.length, 0);
+  contact.version = 2;
+  assert(draftingPacket([contact, receipt], "project", at).blocked);
+  contact.version = 1;
   contact.data.suppressed = true;
   assert(draftingPacket([contact, receipt], "project", at).blocked);
   delete contact.data.suppressed;

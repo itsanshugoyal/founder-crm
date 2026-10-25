@@ -1,5 +1,4 @@
 import { getRequestListener } from "@hono/node-server";
-import { createApplication } from "../src/server/app.js";
 import { proxyEdge } from "../src/edge-proxy.js";
 // The official Supabase integration supplies the modern key names.
 const env = {
@@ -11,7 +10,9 @@ const env = {
 };
 const application = process.env.CRM_EDGE_URL
   ? undefined
-  : createApplication({ env, mode: "production" });
+  : import("../src/server/app.js").then(({ createApplication }) =>
+      createApplication({ env, mode: "production" }),
+    );
 export default getRequestListener(async (request) =>
   process.env.CRM_EDGE_URL
     ? proxyEdge(request, process.env.CRM_EDGE_URL)

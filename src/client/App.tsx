@@ -6,6 +6,9 @@ import {
   useEffect,
   useState,
   useCallback,
+  useRef,
+  lazy,
+  Suspense,
   type ReactNode,
   type FormEvent,
 } from "react";
@@ -50,6 +53,7 @@ import {
   productionLogin,
   productionLogout,
   productionSignUp,
+  RequestError,
 } from "./api";
 
 import { active, initials, modules } from "./models";
@@ -59,21 +63,41 @@ import { verificationCallbackError } from "../shared/auth-redirect";
 const initialVerificationError = verificationCallbackError(location.hash);
 
 import { Button, Modal, Confirm, ErrorBox, RecordForm, cn } from "./ui";
+import { ViewBoundary } from "./ViewBoundary";
 
-import {
-  TodayView,
-  PeopleView,
-  PipelineView,
-  RecordsView,
-  InboxView,
-  ReportsView,
-  SettingsView,
-  KnowledgeView,
-  AutomationView,
-  MoneyView,
-  WorkView,
-  RecordDetail,
-} from "./views";
+const TodayView = lazy(() =>
+  import("./views").then((m) => ({ default: m.TodayView })),
+);
+const PeopleView = lazy(() =>
+  import("./views").then((m) => ({ default: m.PeopleView })),
+);
+const PipelineView = lazy(() =>
+  import("./views").then((m) => ({ default: m.PipelineView })),
+);
+const InboxView = lazy(() =>
+  import("./views").then((m) => ({ default: m.InboxView })),
+);
+const ReportsView = lazy(() =>
+  import("./views").then((m) => ({ default: m.ReportsView })),
+);
+const SettingsView = lazy(() =>
+  import("./views").then((m) => ({ default: m.SettingsView })),
+);
+const KnowledgeView = lazy(() =>
+  import("./views").then((m) => ({ default: m.KnowledgeView })),
+);
+const AutomationView = lazy(() =>
+  import("./views").then((m) => ({ default: m.AutomationView })),
+);
+const MoneyView = lazy(() =>
+  import("./views").then((m) => ({ default: m.MoneyView })),
+);
+const WorkView = lazy(() =>
+  import("./views").then((m) => ({ default: m.WorkView })),
+);
+const RecordDetail = lazy(() =>
+  import("./views").then((m) => ({ default: m.RecordDetail })),
+);
 
 export type Page =
   | "today"
@@ -131,7 +155,10 @@ function Brand() {
       <span className="brand-mark" aria-hidden="true">
         <svg width="31" height="31" viewBox="0 0 31 31" fill="none">
           <path d="M3 2H28V29H3V2Z" fill="currentColor" />
-          <path d="M9 8H23V12H13V16H20V20H13V26H9V8Z" fill="white" />
+          <path
+            d="M9 8H23V12H13V16H20V20H13V26H9V8Z"
+            fill="var(--brand-glyph, #202522)"
+          />
           <path d="M23 22H27V26H23V22Z" fill="var(--accent)" />
         </svg>
       </span>
@@ -142,7 +169,12 @@ function Brand() {
   );
 }
 
-function Loading() {
+function Loading({ onRetry }: { onRetry?: () => void }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 7000);
+    return () => clearTimeout(timer);
+  }, []);
   return (
     <div
       className="loading-shell"
@@ -151,6 +183,23 @@ function Loading() {
     >
       <div className="skeleton skeleton-sidebar" />
       <div className="skeleton-page">
+        <div role="status" className="load-message">
+          <Brand />
+          <p>
+            {slow
+              ? "The workspace is taking longer to respond."
+              : "Opening your private workspace…"}
+          </p>
+          {slow && (
+            <p>
+              Your connection or the hosted service may be slow. Your data has
+              not changed.
+            </p>
+          )}
+          {slow && onRetry && (
+            <Button onClick={onRetry}>Try loading again</Button>
+          )}
+        </div>
         <div className="skeleton skeleton-title" />
         <div className="skeleton skeleton-subtitle" />
         {Array.from({ length: 6 }, (_, i) => (
@@ -439,7 +488,14 @@ export default function App() {
   const [projectId, setProjectId] = useState(
     () => localStorage.getItem("founder-project") || "",
   );
-  const [page, setPageState] = useState<Page>("today");
+  const [page, setPageState] = useState<Page>(() => {
+    const requested = new URLSearchParams(location.search).get("view");
+    return navigation.some((item) => item.page === requested)
+      ? (requested as Page)
+      : "today";
+  });
+  const projectRef = useRef(projectId);
+  const loadSequence = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createKind, setCreateKind] = useState<RecordKind | null>(null);
@@ -474,40 +530,63 @@ export default function App() {
     }
   }, [notice]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (selectedProject = projectRef.current) => {
+    const sequence = ++loadSequence.current;
     try {
       setError("");
-      const s = await getSession();
+      let s: Session;
+      try {
+        s = await getSession({
+          includeWorkspace: true,
+          projectId: selectedProject || undefined,
+        });
+      } catch (e) {
+        if (
+          !(e instanceof RequestError) ||
+          e.status !== 403 ||
+          !selectedProject
+        )
+          throw e;
+        s = await getSession({ includeWorkspace: true });
+      }
+      if (sequence !== loadSequence.current) return;
       setSession(s);
       if (s.authenticated) {
-        let w: WorkspaceData;
-        try {
-          w = await getWorkspace(projectId || undefined);
-        } catch {
-          w = await getWorkspace();
-          setProjectId(w.projects[0]?.id || "");
-          localStorage.setItem("founder-project", w.projects[0]?.id || "");
-        }
+        const w =
+          s.workspace ?? (await getWorkspace(selectedProject || undefined));
+        if (sequence !== loadSequence.current) return;
         setWorkspace(w);
-        if (!projectId || !w.projects.some((p) => p.id === projectId)) {
-          const id = w.projects[0]?.id || "";
-          setProjectId(id);
-          localStorage.setItem("founder-project", id);
-        }
+        // The actor's selected membership, not a stale local hint, determines the active project.
+        const id =
+          w.selectedProjectId ||
+          (w.projects.some((p) => p.id === selectedProject)
+            ? selectedProject
+            : w.projects[0]?.id) ||
+          "";
+        projectRef.current = id;
+        setProjectId(id);
+        localStorage.setItem("founder-project", id);
       } else setWorkspace(null);
     } catch (e) {
-      setError((e as Error).message);
+      if (sequence === loadSequence.current)
+        setError(
+          (e as Error).name === "TimeoutError"
+            ? "The workspace took too long to respond. Check your connection and try again."
+            : (e as Error).message,
+        );
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
-  }, [projectId]);
+  }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function refresh() {
-    const w = await getWorkspace(projectId || undefined);
+    const selectedProject = projectRef.current;
+    const w = await getWorkspace(selectedProject || undefined);
+    if (selectedProject !== projectRef.current) return;
     setWorkspace(w);
     setSelected((current) =>
       current ? w.records.find((r) => r.id === current.id) || null : null,
@@ -531,17 +610,44 @@ export default function App() {
 
   function setPage(next: Page) {
     setPageState(next);
+    const url = new URL(location.href);
+    url.searchParams.set("view", next);
+    history.pushState(null, "", url.pathname + url.search);
+    window.scrollTo({ top: 0 });
     setMobile(false);
     setSearchOpen(false);
   }
 
+  function pageHref(next: Page) {
+    const url = new URL(location.href);
+    url.searchParams.set("view", next);
+    return url.pathname + url.search;
+  }
+
   function changeProject(id: string) {
+    if (id === projectRef.current) return;
+    projectRef.current = id;
     setProjectId(id);
     localStorage.setItem("founder-project", id);
     setSelected(null);
     setMobile(false);
+    setWorkspace(null);
+    setLoading(true);
+    void load(id);
   }
 
+  useEffect(() => {
+    const back = () => {
+      const requested = new URLSearchParams(location.search).get("view");
+      setPageState(
+        navigation.some((item) => item.page === requested)
+          ? (requested as Page)
+          : "today",
+      );
+    };
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key === "k") {
@@ -553,7 +659,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", keydown);
   }, []);
 
-  if (loading) return <Loading />;
+  if (loading) return <Loading onRetry={() => void load()} />;
 
   if (!session)
     return (
@@ -633,8 +739,9 @@ export default function App() {
     <>
       <a
         className="brand-link"
-        href="#"
+        href={pageHref("today")}
         onClick={(e) => {
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
           e.preventDefault();
           setPage("today");
         }}
@@ -682,15 +789,25 @@ export default function App() {
         <kbd>Ctrl K</kbd>
       </button>
       <nav aria-label="Main navigation">
-        {navigation.map((item, i) => (
+        {navigation.slice(0, 5).map((item, i) => (
           <div key={item.page}>
             {i === 0 && <div className="nav-label">Workspace</div>}
-            {i === 5 && <div className="nav-label">Operations</div>}
 
-            <button
+            <a
+              href={pageHref(item.page)}
               aria-current={page === item.page ? "page" : undefined}
               className={cn("nav-item", page === item.page && "nav-active")}
-              onClick={() => setPage(item.page)}
+              onClick={(event) => {
+                if (
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                )
+                  return;
+                event.preventDefault();
+                setPage(item.page);
+              }}
             >
               <item.icon
                 size={19}
@@ -703,9 +820,48 @@ export default function App() {
               {item.page === "work" && tasks > 0 && (
                 <span className="nav-count">{tasks}</span>
               )}
-            </button>
+            </a>
           </div>
         ))}
+        <details
+          className="nav-group"
+          key={`${surface}-${navigation.slice(5).some((item) => item.page === page)}`}
+          open={
+            navigation.slice(5).some((item) => item.page === page) || undefined
+          }
+        >
+          <summary className="nav-group-toggle">
+            Operations <CaretDown size={14} aria-hidden="true" />
+          </summary>
+          <div className="nav-group-links">
+            {navigation.slice(5).map((item) => (
+              <a
+                key={item.page}
+                href={pageHref(item.page)}
+                aria-current={page === item.page ? "page" : undefined}
+                className={cn("nav-item", page === item.page && "nav-active")}
+                onClick={(event) => {
+                  if (
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  setPage(item.page);
+                }}
+              >
+                <item.icon
+                  size={19}
+                  weight={page === item.page ? "fill" : "regular"}
+                  aria-hidden="true"
+                />
+                <span>{item.label}</span>
+              </a>
+            ))}
+          </div>
+        </details>
       </nav>
       <div className="sidebar-bottom">
         <div className="profile">
@@ -808,27 +964,37 @@ export default function App() {
           </header>
           <main id="main" className="main-content" key={projectId}>
             <ErrorBox error={error} />
-            {page === "today" ? (
-              <TodayView />
-            ) : page === "people" ? (
-              <PeopleView />
-            ) : page === "pipeline" ? (
-              <PipelineView />
-            ) : page === "inbox" ? (
-              <InboxView />
-            ) : page === "work" ? (
-              <WorkView />
-            ) : page === "reports" ? (
-              <ReportsView />
-            ) : page === "money" ? (
-              <MoneyView />
-            ) : page === "knowledge" ? (
-              <KnowledgeView />
-            ) : page === "automation" ? (
-              <AutomationView />
-            ) : (
-              <SettingsView key={projectId} />
-            )}
+            <ViewBoundary key={page}>
+              <Suspense
+                fallback={
+                  <p role="status" className="view-footnote">
+                    Opening this view…
+                  </p>
+                }
+              >
+                {page === "today" ? (
+                  <TodayView />
+                ) : page === "people" ? (
+                  <PeopleView />
+                ) : page === "pipeline" ? (
+                  <PipelineView />
+                ) : page === "inbox" ? (
+                  <InboxView />
+                ) : page === "work" ? (
+                  <WorkView />
+                ) : page === "reports" ? (
+                  <ReportsView />
+                ) : page === "money" ? (
+                  <MoneyView />
+                ) : page === "knowledge" ? (
+                  <KnowledgeView />
+                ) : page === "automation" ? (
+                  <AutomationView />
+                ) : (
+                  <SettingsView key={projectId} />
+                )}
+              </Suspense>
+            </ViewBoundary>
           </main>
         </div>
       </div>
@@ -905,7 +1071,17 @@ export default function App() {
         }}
       />
       {selected && (
-        <RecordDetail record={selected} onClose={() => setSelected(null)} />
+        <ViewBoundary key={selected.id} onClose={() => setSelected(null)}>
+          <Suspense
+            fallback={
+              <p role="status" className="toast">
+                Opening record…
+              </p>
+            }
+          >
+            <RecordDetail record={selected} onClose={() => setSelected(null)} />
+          </Suspense>
+        </ViewBoundary>
       )}
       <Modal
         open={searchOpen}
