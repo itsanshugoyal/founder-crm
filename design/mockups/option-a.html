@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f2f4f8" />
+    <title>A · Focus Desk — Founder CRM concept</title>
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="option-a.css" />
+    <script src="demo.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to Today</a>
+    <div class="prototype-bar">
+      <a href="index.html"
+        ><svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="m14 6-6 6 6 6" />
+        </svg>
+        All three directions <strong>/ A · Focus Desk</strong></a
+      ><span class="prototype-note"
+        >Illustrative sample data · local prototype only</span
+      >
+    </div>
+    <header class="a-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>Founder CRM
+      </div>
+      <nav class="topnav" aria-label="Workspace">
+        <button class="nav-button" aria-current="page">Today</button
+        ><button class="nav-button" data-demo-nav="People">People</button
+        ><button class="nav-button" data-demo-nav="Pipeline">Pipeline</button
+        ><button class="nav-button" data-demo-nav="Inbox">Inbox</button
+        ><button class="nav-button" data-demo-nav="Work">Work</button>
+      </nav>
+      <div class="header-end">
+        <button
+          class="icon-button"
+          data-demo-nav="Search"
+          aria-label="Global search preview"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m16 16 4 4" />
+          </svg></button
+        ><span class="avatar">AG</span>
+      </div>
+    </header>
+    <main id="main" class="a-main">
+      <div class="a-heading">
+        <div>
+          <button class="project" data-project>
+            <span class="project-square">D</span> DealDock
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path d="m7 10 5 5 5-5" />
+            </svg>
+          </button>
+          <h1>
+            Make the next<br class="desktop-break" />
+            move matter.
+          </h1>
+          <p class="muted">A clear queue. The context to act.</p>
+        </div>
+        <div class="date-block">
+          <span class="eyebrow">Sunday / 25 October</span>
+          <div class="team-presence">
+            <div class="avatar-pair">
+              <span class="avatar">AG</span><span class="avatar">NK</span>
+            </div>
+            <span>Space for both founders</span>
+          </div>
+          <span class="small muted">Sample day · 2026</span>
+        </div>
+      </div>
+      <div class="desk">
+        <section class="queue" aria-labelledby="queue-heading">
+          <div class="section-head queue-top">
+            <h2 id="queue-heading">Your attention</h2>
+            <span class="queue-count"
+              ><span data-visible-count>4</span> open</span
+            >
+          </div>
+          <div class="queue-filters" role="group" aria-label="Filter work">
+            <button data-queue="all" aria-pressed="true">
+              All work <span>4</span></button
+            ><button data-queue="draft" aria-pressed="false">
+              Drafts <span>1</span></button
+            ><button data-queue="meeting" aria-pressed="false">
+              Meetings <span>1</span></button
+            ><button data-queue="followup" aria-pressed="false">
+              Follow-ups <span>1</span>
+            </button>
+          </div>
+          <label class="search"
+            ><svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m16 16 4 4" /></svg
+            ><span class="sr-only">Find work in sample queue</span
+            ><input
+              data-search
+              type="search"
+              name="queue-search"
+              autocomplete="off"
+              placeholder="Find a person or task…"
+          /></label>
+          <div class="a-task-list">
+            <button
+              class="a-task"
+              data-select="mira"
+              data-task-item="mira"
+              aria-pressed="true"
+            >
+              <span class="task-index">01</span
+              ><span class="task-copy"
+                ><span class="task-kicker"
+                  >Draft review <span>· Today</span></span
+                ><strong>Review the pilot introduction</strong
+                ><span class="task-person"
+                  >Mira Sethi <span>· Luma Learning</span></span
+                ><span class="task-owner"
+                  >Anshu
+                  <span class="task-next"
+                    >Review <span aria-hidden="true">↗</span></span
+                  ></span
+                ></span
+              >
+            </button>
+            <button
+              class="a-task"
+              data-select="inez"
+              data-task-item="inez"
+              aria-pressed="false"
+            >
+              <span class="task-index">02</span
+              ><span class="task-copy"
+                ><span class="task-kicker">Meeting <span>· 16:30</span></span
+                ><strong>Prepare for the discovery call</strong
+                ><span class="task-person"
+                  >Inez Rao <span>· Common Ground</span></span
+                ><span class="task-owner"
+                  >Both founders
+                  <span class="task-next"
+                    >Open <span aria-hidden="true">↗</span></span
+                  ></span
+                ></span
+              >
+            </button>
+            <button
+              class="a-task"
+              data-select="pilot"
+              data-task-item="pilot"
+              aria-pressed="false"
+            >
+              <span class="task-index">03</span
+              ><span class="task-copy"
+                ><span class="task-kicker">Commitment <span>· Today</span></span
+                ><strong>Confirm the pilot checklist</strong
+                ><span class="task-person"
+                  >Founder team <span>· Internal</span></span
+                ><span class="task-owner"
+                  >Anshu
+                  <span class="task-next"
+                    >Open <span aria-hidden="true">↗</span></span
+                  ></span
+                ></span
+              >
+            </button>
+            <button
+              class="a-task"
+              data-select="kabir"
+              data-task-item="kabir"
+              aria-pressed="false"
+            >
+              <span class="task-index">04</span
+              ><span class="task-copy"
+                ><span class="task-kicker"
+                  >Follow-up <span>· Tomorrow</span></span
+                ><strong>Keep the follow-up promise</strong
+                ><span class="task-person"
+                  >Kabir Mehta <span>· Northline Studio</span></span
+                ><span class="task-owner"
+                  >Nahush
+                  <span class="task-next"
+                    >Open <span aria-hidden="true">↗</span></span
+                  ></span
+                ></span
+              >
+            </button>
+          </div>
+          <div id="empty-queue" class="no-results" hidden>
+            <strong>No sample work matches.</strong>
+            <p>Try another person, task, or queue.</p>
+            <button class="secondary" data-reset>Reset filters</button>
+          </div>
+          <p class="queue-explanation">
+            Dated commitments first.<br />No scores. You choose what to open.
+          </p>
+        </section>
+        <article
+          class="review"
+          id="selected-context"
+          tabindex="-1"
+          aria-labelledby="selected-title"
+        >
+          <div class="review-topline">
+            <span class="eyebrow">In focus</span
+            ><span class="pill accent" data-fill="status"
+              >Needs your review</span
+            >
+          </div>
+          <div class="review-heading">
+            <span class="tag" data-current-type>Draft review</span>
+            <h2 id="selected-title" data-fill="title">
+              Review the pilot introduction
+            </h2>
+            <p data-fill="why">
+              A first-message draft is ready for a human review. No message has
+              been sent.
+            </p>
+          </div>
+          <div class="review-person">
+            <div class="identity">
+              <span class="person-badge" data-fill="initials">MS</span>
+              <div>
+                <h3 data-fill="person">Mira Sethi</h3>
+                <p data-fill="company">Luma Learning</p>
+              </div>
+            </div>
+            <span class="small muted">Relationship context</span>
+          </div>
+          <div class="context-note">
+            <span class="detail-label">What to know</span>
+            <p data-fill="context">
+              Mira asked to understand the pilot format. Check that this
+              introduction reflects the current offer before choosing a next
+              step.
+            </p>
+          </div>
+          <div class="review-evidence">
+            <button
+              data-evidence
+              aria-expanded="true"
+              aria-controls="evidence-detail"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M7 3h7l4 4v14H6V3zm7 0v5h5M9 12h6m-6 4h6" /></svg
+              ><span data-fill="evidence">Illustrative note · 23 Oct 2026</span
+              ><span aria-hidden="true">− / +</span>
+            </button>
+            <div id="evidence-detail">
+              <p data-fill="note">
+                Interested in a simple overview of the pilot. Budget and timing
+                are still unknown.
+              </p>
+              <span>Sample source, shown for layout evaluation.</span>
+            </div>
+          </div>
+          <div class="review-bottom">
+            <div>
+              <span class="detail-label">Owner</span>
+              <p class="detail-value" data-fill="owner">Anshu</p>
+            </div>
+            <div>
+              <span class="detail-label">Due</span>
+              <p class="detail-value" data-fill="date">Today</p>
+            </div>
+            <button class="primary" data-preview>
+              <span data-fill="action">Preview draft review</span
+              ><svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M5 12h14m-5-5 5 5-5 5" />
+              </svg>
+            </button>
+          </div>
+          <div class="review-safety">
+            <span class="safety-line" aria-hidden="true"></span>Review,
+            approval, and individual send stay separate.
+          </div>
+        </article>
+      </div>
+      <footer class="prototype-footer">
+        <span>A · Focus Desk — action first, context beside it.</span
+        ><a href="option-b.html"
+          >Explore B · Daybook <span aria-hidden="true">→</span></a
+        >
+      </footer>
+    </main>
+    <div id="demo-notice" class="notice" role="status" hidden></div>
+    <dialog id="preview-dialog" class="dialog" aria-labelledby="dialog-title">
+      <button
+        class="icon-button dialog-close"
+        data-close-dialog
+        aria-label="Close preview"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="m6 6 12 12M6 18 18 6" />
+        </svg></button
+      ><span class="eyebrow">Local review preview</span>
+      <h2 id="dialog-title" data-dialog-title></h2>
+      <p class="small muted">Illustrative content for this design concept.</p>
+      <div class="message" data-dialog-message></div>
+      <p class="warning" data-dialog-foot></p>
+      <button class="primary" data-close-dialog>Return to Today</button>
+      <p class="warning">
+        This prototype cannot approve, send, or save anything.
+      </p>
+    </dialog>
+  </body>
+</html>

@@ -1,0 +1,907 @@
+:root {
+  --ink: #302932;
+  --muted: #786c78;
+  --accent: #934765;
+  --canvas: #f6f3f5;
+  --line: #e4dce2;
+  --tint: #f3e5ed;
+}
+.prototype-bar {
+  background: #eae3e8;
+  color: #685d67;
+}
+.c-header {
+  max-width: 1500px;
+  margin: auto;
+  height: 81px;
+  padding: 0 45px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.c-header .brand {
+  font-size: 17px;
+}
+.c-header .brand-mark {
+  border-radius: 7px 7px 7px 1px;
+}
+.c-project {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.project-divider {
+  color: #c6b9c3;
+  font-size: 23px;
+  font-weight: 400;
+}
+.c-project > button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: transparent;
+  font-size: 12px;
+  min-height: 44px;
+}
+.c-project svg {
+  width: 13px;
+  height: 13px;
+}
+.c-header .topnav {
+  margin-left: auto;
+  gap: 2px;
+}
+.c-header .nav-button {
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 30px;
+}
+.c-header .nav-button[aria-current="page"] {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+.c-header > .avatar {
+  margin-left: 14px;
+  background: #e8dce4;
+  font-size: 10px;
+  border-color: var(--canvas);
+}
+.c-main {
+  max-width: 1370px;
+  margin: auto;
+  padding: 39px 45px 0;
+}
+.c-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+.c-heading > div > .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.1px;
+  color: var(--muted);
+}
+.c-heading h1 {
+  font-size: 38px;
+  letter-spacing: -1.5px;
+  margin: 12px 0 9px;
+  line-height: 1.2;
+}
+.c-heading p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.c-roster-search {
+  width: 245px;
+}
+.c-roster-search > .eyebrow {
+  display: block;
+  margin-bottom: 12px;
+  text-align: right;
+  font-size: 9px !important;
+  letter-spacing: 0.5px !important;
+}
+.c-roster-search .search {
+  height: 39px;
+  background: transparent;
+  border-radius: 30px;
+  padding: 0 14px;
+}
+.c-roster-search .search input {
+  font-size: 11px;
+}
+.people-roster {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 0.85fr;
+  gap: 12px;
+  margin-bottom: 27px;
+}
+.roster-person {
+  padding: 19px 20px 16px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  position: relative;
+}
+.roster-person:hover {
+  background: #eee7ec;
+  border-color: #c8b4c0;
+}
+.roster-person[aria-pressed="true"] {
+  background: white;
+  border-color: #b57793;
+  box-shadow: 0 5px 15px -10px #93476555;
+}
+.roster-person[aria-pressed="true"]:after {
+  content: "";
+  height: 3px;
+  background: var(--accent);
+  position: absolute;
+  bottom: 0;
+  left: 20px;
+  right: 20px;
+  border-radius: 3px 3px 0 0;
+}
+.roster-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.roster-person .person-badge {
+  width: 37px;
+  height: 37px;
+  border-radius: 50%;
+  font-size: 10px;
+  background: #e7dee4;
+  color: #79616f;
+  border: 1px solid #dacdd6;
+}
+.roster-person[aria-pressed="true"] .person-badge {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.roster-due {
+  font-size: 9px;
+  color: var(--muted);
+}
+.roster-due > span {
+  font-size: 16px;
+  margin-left: 7px;
+  color: var(--accent);
+}
+.roster-person > strong {
+  display: block;
+  font-size: 15px;
+  letter-spacing: -0.3px;
+  font-weight: 500;
+}
+.roster-company {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.roster-loop {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 17px;
+}
+.loop-mark {
+  width: 7px;
+  height: 7px;
+  display: block;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+}
+.internal-person {
+  border-style: dashed;
+}
+.people-roster .no-results {
+  grid-column: 1/-1;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.relationship-room {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  scroll-margin-top: 16px;
+}
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 33px;
+  border-bottom: 1px solid var(--line);
+}
+.room-header .identity {
+  gap: 17px;
+}
+.room-monogram {
+  height: 58px;
+  width: 58px;
+  background: var(--tint);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+.room-header .eyebrow {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 3px;
+}
+.room-header .identity h2 {
+  font-size: 24px;
+  letter-spacing: -0.7px;
+  line-height: 1.3;
+}
+.room-header .identity p {
+  font-size: 11px;
+  margin-top: 3px;
+}
+.room-ownership {
+  text-align: right;
+  display: grid;
+  gap: 2px;
+}
+.room-ownership .detail-label {
+  font-size: 9px;
+  margin: 0;
+}
+.room-ownership > span:nth-child(2) {
+  font-size: 12px;
+}
+.room-ownership > .small {
+  font-size: 9px;
+  margin-top: 5px;
+}
+.room-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(275px, 1fr);
+}
+.open-loop {
+  padding: 26px 33px 25px;
+}
+.open-loop .section-head h3 {
+  font-size: 12px;
+  letter-spacing: -0.1px;
+}
+.open-loop .pill {
+  font-size: 9px;
+  padding: 4px 8px;
+  min-height: 24px;
+}
+.loop-title {
+  padding: 23px 0 20px;
+}
+.loop-title > .tag {
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.loop-title h2 {
+  font-size: 24px;
+  line-height: 1.3;
+  letter-spacing: -0.7px;
+  margin: 8px 0 10px;
+}
+.loop-title > p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 540px;
+}
+.working-preview {
+  background: #faf8fa;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 17px 22px;
+}
+.working-preview-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.working-preview .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.working-preview .small {
+  font-size: 9px;
+}
+.working-preview > p {
+  white-space: pre-line;
+  font-size: 12px;
+  line-height: 1.8;
+  max-width: 510px;
+}
+.loop-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 24px;
+}
+.loop-action .detail-label {
+  font-size: 9px;
+}
+.loop-action p {
+  font-size: 11px;
+}
+.loop-action .primary {
+  font-size: 11px;
+  border-radius: 30px;
+  min-height: 42px;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+.relationship-context {
+  padding: 26px 28px 25px;
+  border-left: 1px solid var(--line);
+  background: #fdfcfd;
+}
+.relationship-context .section-head h3 {
+  font-size: 12px;
+  letter-spacing: -0.1px;
+}
+.relationship-context .section-head > svg {
+  height: 15px;
+  width: 15px;
+  color: var(--muted);
+}
+.relationship-entry {
+  padding: 24px 0 22px 24px;
+  position: relative;
+  border-bottom: 1px solid var(--line);
+}
+.entry-index {
+  position: absolute;
+  left: 0;
+  top: 27px;
+  font-size: 9px;
+  color: #a88d9b;
+}
+.relationship-entry > .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.relationship-entry > p {
+  font-size: 12px;
+  line-height: 1.85;
+  margin-top: 10px;
+}
+.source-caption {
+  font-size: 9px;
+  color: var(--muted);
+  display: block;
+  margin-top: 14px;
+}
+.human-boundary {
+  margin-top: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.human-boundary > svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 3px;
+}
+.human-boundary > p {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+.human-boundary > p > span {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-top: 6px;
+}
+.prototype-footer {
+  font-size: 10px;
+}
+.prototype-footer > a {
+  font-size: 11px;
+}
+@media (min-width: 1500px) {
+  .c-main {
+    padding-top: 50px;
+  }
+  .c-heading {
+    margin-bottom: 35px;
+  }
+  .people-roster {
+    margin-bottom: 32px;
+  }
+  .open-loop {
+    padding: 30px 36px;
+  }
+  .room-header {
+    padding: 28px 36px;
+  }
+  .working-preview > p {
+    font-size: 13px;
+  }
+  .relationship-context {
+    padding: 30px;
+  }
+  .relationship-entry > p {
+    font-size: 13px;
+  }
+}
+@media (max-width: 1100px) {
+  .c-header {
+    padding: 0 28px;
+    gap: 16px;
+  }
+  .c-header .brand {
+    font-size: 15px;
+  }
+  .c-project {
+    gap: 14px;
+  }
+  .c-header .nav-button {
+    padding: 10px 11px;
+    font-size: 11px;
+  }
+  .c-header > .avatar {
+    margin-left: 2px;
+  }
+  .c-main {
+    padding: 32px 28px 0;
+  }
+  .c-heading h1 {
+    font-size: 34px;
+  }
+  .people-roster {
+    gap: 9px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .roster-person {
+    padding: 16px 15px;
+  }
+  .roster-person > strong {
+    font-size: 14px;
+  }
+  .roster-company {
+    font-size: 9px;
+  }
+  .roster-due {
+    font-size: 8px;
+  }
+  .roster-person .person-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 9px;
+  }
+  .roster-loop {
+    font-size: 9px;
+  }
+  .room-body {
+    grid-template-columns: minmax(0, 1.5fr) minmax(255px, 1fr);
+  }
+  .room-header {
+    padding: 23px 27px;
+  }
+  .open-loop {
+    padding: 24px 27px;
+  }
+  .relationship-context {
+    padding: 24px 23px;
+  }
+  .loop-action {
+    display: block;
+  }
+  .loop-action > .primary {
+    margin-top: 15px;
+  }
+  .loop-title h2 {
+    font-size: 22px;
+  }
+}
+@media (max-width: 850px) {
+  .c-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 20px 22px 13px;
+    gap: 14px;
+  }
+  .c-header .topnav {
+    order: 4;
+    width: 100%;
+    margin: 0;
+    justify-content: space-between;
+    padding-top: 2px;
+  }
+  .c-header .nav-button {
+    font-size: 12px;
+    padding: 10px 15px;
+  }
+  .c-header > .avatar {
+    margin-left: auto;
+  }
+  .c-project {
+    margin-left: auto;
+    gap: 0;
+  }
+  .project-divider {
+    display: none;
+  }
+  .c-main {
+    padding: 28px 24px 0;
+  }
+  .c-heading {
+    display: block;
+  }
+  .c-heading h1 {
+    font-size: 35px;
+  }
+  .c-roster-search {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 22px;
+    gap: 18px;
+  }
+  .c-roster-search > .eyebrow {
+    margin: 0;
+    text-align: left;
+    font-size: 9px !important;
+  }
+  .c-roster-search .search {
+    width: 240px;
+  }
+  .people-roster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .roster-person {
+    padding: 17px 20px;
+  }
+  .roster-person > strong {
+    font-size: 16px;
+  }
+  .roster-company {
+    font-size: 11px;
+  }
+  .roster-person .person-badge {
+    width: 36px;
+    height: 36px;
+    font-size: 10px;
+  }
+  .roster-due {
+    font-size: 10px;
+  }
+  .roster-loop {
+    font-size: 11px;
+  }
+  .room-body {
+    grid-template-columns: 1fr;
+  }
+  .relationship-context {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    padding: 26px 28px;
+  }
+  .relationship-context > .section-head,
+  .human-boundary {
+    grid-column: 1/-1;
+  }
+  .relationship-entry {
+    padding-bottom: 20px;
+  }
+  .human-boundary {
+    margin-top: 21px;
+  }
+  .loop-action {
+    display: flex;
+  }
+  .loop-action > .primary {
+    margin-top: 0;
+  }
+  .working-preview > p {
+    font-size: 14px;
+  }
+  .loop-title h2 {
+    font-size: 26px;
+  }
+  .loop-title > p {
+    font-size: 13px;
+  }
+  .open-loop .section-head h3,
+  .relationship-context .section-head h3 {
+    font-size: 13px;
+  }
+  .relationship-entry > p {
+    font-size: 13px;
+  }
+  .relationship-entry > .eyebrow {
+    font-size: 9px;
+  }
+  .human-boundary > p {
+    font-size: 12px;
+  }
+  .human-boundary > p > span {
+    font-size: 11px;
+  }
+  .working-preview .eyebrow {
+    font-size: 9px;
+  }
+  .working-preview .small {
+    font-size: 10px;
+  }
+  .loop-action p {
+    font-size: 13px;
+  }
+  .loop-action .detail-label {
+    font-size: 10px;
+  }
+  .loop-action > .primary {
+    font-size: 13px;
+  }
+  .open-loop .pill {
+    font-size: 10px;
+  }
+  .source-caption {
+    font-size: 10px;
+  }
+}
+@media (max-width: 500px) {
+  .c-header {
+    padding: 17px 16px 10px;
+    gap: 10px;
+  }
+  .c-header .brand {
+    font-size: 14px;
+    gap: 7px;
+  }
+  .c-header .brand-mark {
+    width: 26px;
+    height: 26px;
+  }
+  .c-header .brand-mark:before {
+    left: 7px;
+  }
+  .c-header .brand-mark:after {
+    right: 7px;
+  }
+  .c-project > button {
+    font-size: 11px;
+    gap: 4px;
+  }
+  .c-header > .avatar {
+    margin-left: 0;
+    width: 28px;
+    height: 28px;
+    font-size: 8px;
+  }
+  .c-header .nav-button {
+    font-size: 12px;
+    padding: 9px 12px;
+  }
+  .c-header .topnav {
+    gap: 0;
+  }
+  .c-main {
+    padding: 27px 16px 0;
+  }
+  .c-heading h1 {
+    font-size: 31px;
+    max-width: 280px;
+    letter-spacing: -1px;
+    margin-top: 12px;
+  }
+  .c-heading p {
+    font-size: 12px;
+    max-width: 280px;
+    line-height: 1.8;
+  }
+  .c-heading > div > .eyebrow {
+    font-size: 9px;
+  }
+  .c-roster-search {
+    display: block;
+    margin-top: 20px;
+  }
+  .c-roster-search > .eyebrow {
+    font-size: 9px !important;
+    margin-bottom: 11px;
+  }
+  .c-roster-search .search {
+    width: 100%;
+    height: 44px;
+  }
+  .c-roster-search .search input {
+    font-size: 16px;
+  }
+  .c-heading {
+    margin-bottom: 20px;
+  }
+  .people-roster {
+    gap: 9px;
+    margin-bottom: 22px;
+  }
+  .roster-person {
+    padding: 14px 13px 15px;
+    border-radius: 10px;
+  }
+  .roster-person > strong {
+    font-size: 14px;
+  }
+  .roster-company {
+    font-size: 10px;
+  }
+  .roster-top {
+    gap: 5px;
+    margin-bottom: 11px;
+  }
+  .roster-person .person-badge {
+    width: 31px;
+    height: 31px;
+    font-size: 9px;
+  }
+  .roster-due {
+    font-size: 8px;
+  }
+  .roster-due > span {
+    margin-left: 4px;
+    font-size: 13px;
+  }
+  .roster-loop {
+    font-size: 9px;
+    margin-top: 14px;
+    gap: 5px;
+  }
+  .loop-mark {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+  }
+  .relationship-room {
+    border-radius: 12px;
+  }
+  .room-header {
+    padding: 22px 19px;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .room-monogram {
+    width: 43px;
+    height: 43px;
+    font-size: 14px;
+    border-radius: 11px;
+  }
+  .room-header .identity {
+    gap: 10px;
+    align-items: center;
+  }
+  .room-header .identity h2 {
+    font-size: 22px;
+  }
+  .room-header .identity p {
+    font-size: 10px;
+  }
+  .room-header .eyebrow {
+    font-size: 7px;
+  }
+  .room-ownership {
+    padding-top: 3px;
+  }
+  .room-ownership .detail-label {
+    font-size: 8px;
+  }
+  .room-ownership > span:nth-child(2) {
+    font-size: 10px;
+  }
+  .room-ownership > .small {
+    display: none;
+  }
+  .open-loop {
+    padding: 23px 19px;
+  }
+  .open-loop .section-head {
+    gap: 8px;
+  }
+  .open-loop .section-head h3 {
+    font-size: 12px;
+  }
+  .open-loop .pill {
+    font-size: 9px;
+  }
+  .loop-title h2 {
+    font-size: 24px;
+  }
+  .loop-title > p {
+    font-size: 13px;
+  }
+  .working-preview {
+    padding: 16px;
+  }
+  .working-preview > p {
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .working-preview-heading {
+    gap: 7px;
+  }
+  .working-preview .eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.7px;
+  }
+  .working-preview .small {
+    font-size: 8px;
+  }
+  .loop-action {
+    display: block;
+    margin-top: 22px;
+  }
+  .loop-action > .primary {
+    width: 100%;
+    margin-top: 16px;
+    min-height: 46px;
+    font-size: 14px;
+  }
+  .relationship-context {
+    grid-template-columns: 1fr;
+    padding: 24px 19px;
+    gap: 0;
+  }
+  .relationship-context > .section-head,
+  .human-boundary {
+    grid-column: auto;
+  }
+  .relationship-entry {
+    padding-top: 24px;
+    padding-bottom: 23px;
+  }
+  .relationship-entry > p {
+    font-size: 14px;
+  }
+  .relationship-entry > .eyebrow {
+    font-size: 9px;
+  }
+  .entry-index {
+    top: 26px;
+  }
+  .human-boundary > p {
+    font-size: 12px;
+  }
+  .human-boundary > p > span {
+    font-size: 11px;
+  }
+  .source-caption {
+    font-size: 10px;
+  }
+}

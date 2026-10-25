@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f6f3f5" />
+    <title>C · Relationship Room — Founder CRM concept</title>
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="option-c.css" />
+    <script src="demo.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to Today</a>
+    <div class="prototype-bar">
+      <a href="index.html"
+        ><svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="m14 6-6 6 6 6" />
+        </svg>
+        All three directions <strong>/ C · Relationship Room</strong></a
+      ><span class="prototype-note"
+        >Illustrative sample data · local prototype only</span
+      >
+    </div>
+    <header class="c-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>Founder CRM
+      </div>
+      <div class="c-project">
+        <span class="project-divider" aria-hidden="true">/</span
+        ><button data-project>
+          DealDock
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="m7 10 5 5 5-5" />
+          </svg>
+        </button>
+      </div>
+      <nav class="topnav" aria-label="Workspace">
+        <button class="nav-button" aria-current="page">Today</button
+        ><button class="nav-button" data-demo-nav="People">People</button
+        ><button class="nav-button" data-demo-nav="Pipeline">Pipeline</button
+        ><button class="nav-button" data-demo-nav="Inbox">Inbox</button
+        ><button class="nav-button" data-demo-nav="Work">Work</button>
+      </nav>
+      <span class="avatar">AG</span>
+    </header>
+    <main id="main" class="c-main">
+      <section class="c-heading" aria-labelledby="page-title">
+        <div>
+          <span class="eyebrow">Today / Sunday, 25 October</span>
+          <h1 id="page-title">Who needs you today?</h1>
+          <p>Start with the relationship. Bring the work with you.</p>
+        </div>
+        <div class="c-roster-search">
+          <span class="eyebrow">4 open loops · 2 founders</span
+          ><label class="search"
+            ><svg aria-hidden="true" viewBox="0 0 24 24">
+              <circle cx="10.5" cy="10.5" r="6.5" />
+              <path d="m16 16 4 4" /></svg
+            ><span class="sr-only">Find a sample relationship or task</span
+            ><input
+              data-search
+              type="search"
+              name="relationship-search"
+              autocomplete="off"
+              placeholder="Find in today’s people…"
+          /></label>
+        </div>
+      </section>
+      <section class="people-roster" aria-label="Choose a relationship">
+        <button
+          class="roster-person"
+          data-select="mira"
+          data-task-item="mira"
+          aria-pressed="true"
+        >
+          <span class="roster-top"
+            ><span class="person-badge">MS</span
+            ><span class="roster-due"
+              >Today <span aria-hidden="true">↗</span></span
+            ></span
+          ><strong>Mira Sethi</strong
+          ><span class="roster-company">Luma Learning</span
+          ><span class="roster-loop"
+            ><span class="loop-mark" aria-hidden="true"></span>1 draft to
+            review</span
+          >
+        </button>
+        <button
+          class="roster-person"
+          data-select="inez"
+          data-task-item="inez"
+          aria-pressed="false"
+        >
+          <span class="roster-top"
+            ><span class="person-badge">IR</span
+            ><span class="roster-due tabular"
+              >16:30 <span aria-hidden="true">↗</span></span
+            ></span
+          ><strong>Inez Rao</strong
+          ><span class="roster-company">Common Ground</span
+          ><span class="roster-loop"
+            ><span class="loop-mark" aria-hidden="true"></span>1 meeting to
+            prepare</span
+          >
+        </button>
+        <button
+          class="roster-person"
+          data-select="kabir"
+          data-task-item="kabir"
+          aria-pressed="false"
+        >
+          <span class="roster-top"
+            ><span class="person-badge">KM</span
+            ><span class="roster-due"
+              >Tomorrow <span aria-hidden="true">↗</span></span
+            ></span
+          ><strong>Kabir Mehta</strong
+          ><span class="roster-company">Northline Studio</span
+          ><span class="roster-loop"
+            ><span class="loop-mark" aria-hidden="true"></span>1 promise to
+            keep</span
+          >
+        </button>
+        <button
+          class="roster-person internal-person"
+          data-select="pilot"
+          data-task-item="pilot"
+          aria-pressed="false"
+        >
+          <span class="roster-top"
+            ><span class="person-badge">DD</span
+            ><span class="roster-due"
+              >Today <span aria-hidden="true">↗</span></span
+            ></span
+          ><strong>Founder team</strong
+          ><span class="roster-company">DealDock · internal</span
+          ><span class="roster-loop"
+            ><span class="loop-mark" aria-hidden="true"></span>1 checklist to
+            confirm</span
+          >
+        </button>
+        <div id="empty-queue" class="no-results" hidden>
+          <strong>No sample relationships match.</strong>
+          <p>Try a different name, company, or task.</p>
+          <button class="secondary" data-reset>Reset search</button>
+        </div>
+      </section>
+      <article
+        class="relationship-room"
+        id="selected-context"
+        tabindex="-1"
+        aria-labelledby="person-title"
+      >
+        <header class="room-header">
+          <div class="identity">
+            <span class="room-monogram" data-fill="initials">MS</span>
+            <div>
+              <span class="eyebrow">The relationship</span>
+              <h2 id="person-title" data-fill="person">Mira Sethi</h2>
+              <p data-fill="company">Luma Learning</p>
+            </div>
+          </div>
+          <div class="room-ownership">
+            <span class="detail-label">Working with</span
+            ><span data-fill="owner">Anshu</span
+            ><span class="small muted">Project · DealDock</span>
+          </div>
+        </header>
+        <div class="room-body">
+          <section class="open-loop" aria-labelledby="loop-heading">
+            <div class="section-head">
+              <h3 id="loop-heading">The open loop</h3>
+              <span class="pill accent" data-fill="status"
+                >Needs your review</span
+              >
+            </div>
+            <div class="loop-title">
+              <span class="tag" data-current-type>Draft review</span>
+              <h2 data-fill="title">Review the pilot introduction</h2>
+              <p data-fill="why">
+                A first-message draft is ready for a human review. No message
+                has been sent.
+              </p>
+            </div>
+            <div class="working-preview">
+              <div class="working-preview-heading">
+                <span class="eyebrow">Working note / preview</span
+                ><span class="small muted">Illustrative only</span>
+              </div>
+              <p data-fill="message">
+                Hi Mira, You mentioned wanting a clearer view of the pilot. I
+                can share the short outline, including what we would test and
+                the time it would need from your team. Would that be useful?
+                Anshu
+              </p>
+            </div>
+            <div class="loop-action">
+              <div>
+                <span class="detail-label">The next small step</span>
+                <p data-fill="next">Check the offer and wording</p>
+              </div>
+              <button class="primary" data-preview>
+                <span data-fill="action">Preview draft review</span
+                ><svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M5 12h14m-5-5 5 5-5 5" />
+                </svg>
+              </button>
+            </div>
+          </section>
+          <aside class="relationship-context" aria-labelledby="context-heading">
+            <div class="section-head">
+              <h3 id="context-heading">Before you act</h3>
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <path d="M8 3h8l4 4v14H4V3zm8 0v5h4M8 12h8m-8 4h5" />
+              </svg>
+            </div>
+            <div class="relationship-entry">
+              <span class="entry-index">01</span
+              ><span class="eyebrow">What we know</span>
+              <p data-fill="note">
+                Interested in a simple overview of the pilot. Budget and timing
+                are still unknown.
+              </p>
+              <span class="source-caption" data-fill="evidence"
+                >Illustrative note · 23 Oct 2026</span
+              >
+            </div>
+            <div class="relationship-entry">
+              <span class="entry-index">02</span
+              ><span class="eyebrow">Keep in mind</span>
+              <p data-fill="context">
+                Mira asked to understand the pilot format. Check that this
+                introduction reflects the current offer before choosing a next
+                step.
+              </p>
+            </div>
+            <div class="human-boundary">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <rect x="5" y="10" width="14" height="11" rx="2" />
+                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+              </svg>
+              <p>
+                Human review before every send.<span
+                  >Approval and sending are separate actions. This preview does
+                  neither.</span
+                >
+              </p>
+            </div>
+          </aside>
+        </div>
+      </article>
+      <footer class="prototype-footer">
+        <span
+          >C · Relationship Room — people first, open loops kept together.</span
+        ><a href="index.html"
+          >Compare all three directions <span aria-hidden="true">↗</span></a
+        >
+      </footer>
+    </main>
+    <div id="demo-notice" class="notice" role="status" hidden></div>
+    <dialog id="preview-dialog" class="dialog" aria-labelledby="dialog-title">
+      <button
+        class="icon-button dialog-close"
+        data-close-dialog
+        aria-label="Close preview"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24">
+          <path d="m6 6 12 12M6 18 18 6" />
+        </svg></button
+      ><span class="eyebrow">Local review preview</span>
+      <h2 id="dialog-title" data-dialog-title></h2>
+      <p class="small muted">Illustrative content for this design concept.</p>
+      <div class="message" data-dialog-message></div>
+      <p class="warning" data-dialog-foot></p>
+      <button class="primary" data-close-dialog>Return to Today</button>
+      <p class="warning">
+        This prototype cannot approve, send, or save anything.
+      </p>
+    </dialog>
+  </body>
+</html>

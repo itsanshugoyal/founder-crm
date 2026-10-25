@@ -11,3 +11,5 @@ Invalid-credential guidance explains first-time setup without exposing account e
 Browser checks use a read-only loopback fixture with no Auth credentials or mutations: default account creation, assigned email read-only, separate existing-account mode, correct password autofill and a 390px layout within the viewport. No real password was entered, account created, confirmation email triggered or invitation accepted by the agent.
 
 Backend founder-crm version 7 is ACTIVE. A live invalid-invitation probe returns 403 with clear recovery guidance. Frontend release is pushed separately and checked for matching assets and anonymous access rejection. The invitee still needs to register and verify their own login through the original valid invitation link.
+
+Frontend commit `b084a18` reached Vercel Ready as `dpl_9Pr6CfjfUNr5R5jArBHVuuKwdUXx`. Its served asset matched the local build. Live health and the scoped authenticated bootstrap passed; anonymous workspace access was rejected and anonymous session included no workspace. This does not claim that Nahush has completed his private signup/verification.
