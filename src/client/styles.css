@@ -991,6 +991,7 @@ kbd {
   margin-bottom: 20px;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+  overflow-y: hidden;
 }
 .tabs > button {
   padding: 12px 0;
