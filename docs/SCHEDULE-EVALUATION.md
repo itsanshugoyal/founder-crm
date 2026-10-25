@@ -1,5 +1,34 @@
 # CRM schedule evaluation — 25 October 2026
 
+## Current manual stage validation
+
+After the schedule configuration was made team-editable in
+[`SCHEDULES.md`](SCHEDULES.md), all four saved Codex schedules were checked as
+ACTIVE, pointed to the current CRM workflow, and confirmed to read that file.
+Their cadences remain unchanged. The research job had retained an old target
+chat; this was corrected as part of the check. A Markdown change now governs
+the next run's allowed work and limits, while an authorised scheduler update is
+still required for a time, activation, or target-chat change.
+
+The current manual pass ran the stages in their dependency order and stored
+both Supabase and ignored local receipts. It was a real scoped CRM operation,
+not a claim that a future timer has fired:
+
+| Stage | Result | Evidence and limits |
+| --- | --- | --- |
+| Draft cleanup before run | 31 unapproved historic drafts archived, not deleted | Atomic preview and readback both covered 31 records; approved/sent/sending work was excluded; zero sends. |
+| Research | 2 primary-source checks; 0 draft-eligible | Weight Loss With Tarn is held because the source shows a multi-person coaching context without verified Instagram buyer flow. YogaWithSahithi is held because the source describes a doctor-led clinic context rather than the solo owned-offer hypothesis. |
+| Drafts | 3 new source-led Instagram fit questions | The unconsumed three-contact research receipt produced one review-only draft each for `designwithvibhu`, `dhairyadecodes`, and `coachamanshukla`. No approval or send occurred. A repeat gate then returned `alreadyProcessed: true`. |
+| Replies | 0 matches; 0 response drafts | The approved Gmail identity was checked; a bounded DealDock Gmail search and upcoming-calendar search returned zero. Instagram/LinkedIn and manual-send totals remain unknown. |
+| Weekly learning | 1 human-review experiment | Manually review up to the three new fit questions, record only verified sends and actual enquiry-path replies, and keep ads/pricing/free-term changes closed pending evidence. |
+
+The new manual receipts are `c95548f3…` (research), `48dc010f…` (drafts),
+`54499c8b…` (replies), and `e2752031…` (weekly). They record no sends,
+approvals, invitations, publishing, payments, or provider authorization.
+The current draft gate is correctly blocked by the later research receipt,
+which contains no draft-eligible packets; it does not recreate copy just to
+fill a queue.
+
 This is a read-only evaluation of the saved Codex schedules and the 25 October manual rehearsals, recorded at about 07:48 IST. The first timed research slot is 09:00 IST today. A saved `ACTIVE` schedule and a manual rehearsal do not establish that a timed wake-up has run. The local machine is set to India Standard Time, all four schedule files are present, and `.local/operations/STOP` was absent during this check.
 
 | Stage | Saved cadence | Rehearsal evidence | What remains unproven |
