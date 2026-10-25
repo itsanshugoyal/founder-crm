@@ -444,6 +444,34 @@ export async function createApplication(options: AppOptions = {}) {
     deleteCookie(c, cookieName, { path: "/" });
     return c.json({ message: "Signed out." });
   });
+  // The invitation is a capability. Return its limited onboarding context only
+  // after checking that capability; never disclose auth-account existence.
+  app.post("/api/auth/invitation", async (c) => {
+    const data = await body(c);
+    const token = cleanString(data.token, "Invite token", 200);
+    const state = await database().snapshot();
+    const invite = state.private.invites[await digest(token)];
+    assert(
+      invite && invite.expires > Date.now(),
+      "This invitation is invalid or expired. Ask the person who invited you for a fresh link.",
+      403,
+    );
+    const member = state.members.find((m) => m.id === invite.memberId);
+    assert(
+      member?.email,
+      "This invitation is no longer available. Ask an owner for a fresh link.",
+      403,
+    );
+    return c.json({
+      name: member.name,
+      email: member.email,
+      role: member.role,
+      projects: state.projects
+        .filter((p) => member.projectIds.includes(p.id))
+        .map((p) => p.name),
+      expiresAt: new Date(invite.expires).toISOString(),
+    });
+  });
   app.post("/api/auth/accept-invite", async (c) => {
     const data = await body(c),
       token = cleanString(data.token, "Invite token", 200);
@@ -565,6 +593,7 @@ export async function createApplication(options: AppOptions = {}) {
         "/api/auth/login",
         "/api/auth/logout",
         "/api/auth/accept-invite",
+        "/api/auth/invitation",
       ].includes(c.req.path)
     )
       return next();

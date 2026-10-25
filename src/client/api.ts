@@ -25,7 +25,10 @@ export async function configureAuth(session: Session) {
 }
 export async function productionLogin(email: string, password: string) {
   if (!supabase) throw Error("Production authentication is not configured.");
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  });
   if (error) throw error;
 }
 export async function productionSignUp(
@@ -35,7 +38,7 @@ export async function productionSignUp(
 ) {
   if (!supabase) throw Error("Production authentication is not configured.");
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: email.trim().toLowerCase(),
     password,
     options: {
       data: { name },
@@ -44,6 +47,69 @@ export async function productionSignUp(
   });
   if (error) throw error;
   return Boolean(data.session);
+}
+export async function productionIdentity() {
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const user = data.session?.user;
+  return user?.email
+    ? { email: user.email, verified: Boolean(user.email_confirmed_at) }
+    : null;
+}
+export async function productionResendVerification(email: string) {
+  if (!supabase) throw Error("Production authentication is not configured.");
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: email.trim().toLowerCase(),
+    options: { emailRedirectTo: verificationRedirectUrl(location.href) },
+  });
+  if (error) throw error;
+}
+type InviteJoinServices = {
+  identity: typeof productionIdentity;
+  signUp: typeof productionSignUp;
+  signIn: typeof productionLogin;
+  accept: (token: string, name: string) => Promise<unknown>;
+};
+export async function joinProductionInvitation(
+  input: {
+    token: string;
+    email: string;
+    name: string;
+    password: string;
+    createAccount: boolean;
+  },
+  services: InviteJoinServices = {
+    identity: productionIdentity,
+    signUp: productionSignUp,
+    signIn: productionLogin,
+    accept: (token, name) =>
+      request("/api/auth/accept-invite", {
+        method: "POST",
+        body: JSON.stringify({ token, name }),
+      }),
+  },
+): Promise<"verification_required" | "accepted"> {
+  const email = input.email.trim().toLowerCase();
+  const current = await services.identity();
+  if (current && current.email.toLowerCase() !== email)
+    throw Error(
+      "Sign out of the current account before accepting this invitation.",
+    );
+  if (current && !current.verified) return "verification_required";
+  if (!current) {
+    if (input.createAccount) {
+      const ready = await services.signUp(
+        email,
+        input.password,
+        input.name.trim(),
+      );
+      if (!ready) return "verification_required";
+    } else await services.signIn(email, input.password);
+  }
+  await services.accept(input.token, input.name.trim());
+  return "accepted";
 }
 export async function productionLogout() {
   if (supabase) await supabase.auth.signOut();

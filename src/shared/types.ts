@@ -95,6 +95,13 @@ export interface Session {
   supabaseAnonKey?: string;
   setupRequired?: boolean;
 }
+export interface InvitationInfo {
+  name: string;
+  email: string;
+  role: Member["role"];
+  projects: string[];
+  expiresAt: string;
+}
 export interface WorkspaceData {
   selectedProjectId?: string;
   projects: Project[];

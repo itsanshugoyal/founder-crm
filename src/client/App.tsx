@@ -42,6 +42,7 @@ import type {
   MutationResult,
   RecordKind,
   Session,
+  InvitationInfo,
   WorkspaceData,
 } from "../shared/types";
 
@@ -53,11 +54,15 @@ import {
   productionLogin,
   productionLogout,
   productionSignUp,
+  productionIdentity,
+  productionResendVerification,
+  joinProductionInvitation,
   RequestError,
 } from "./api";
 
 import { active, initials, modules } from "./models";
 import { verificationCallbackError } from "../shared/auth-redirect";
+import { authGuidance } from "../shared/auth-guidance";
 
 // Capture safe guidance before the Auth client consumes and clears callback fragments.
 const initialVerificationError = verificationCallbackError(location.hash);
@@ -226,7 +231,12 @@ function Auth({
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(initialVerificationError);
-  const [inviteCreate, setInviteCreate] = useState(false);
+  const [inviteCreate, setInviteCreate] = useState(true);
+  const [inviteInfo, setInviteInfo] = useState<InvitationInfo | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(Boolean(invite));
+  const [inviteLookupError, setInviteLookupError] = useState("");
+  const [signedInIdentity, setSignedInIdentity] =
+    useState<Awaited<ReturnType<typeof productionIdentity>>>(null);
   const [ownerCreate, setOwnerCreate] = useState(false);
   const [verification, setVerification] = useState("");
   const canCreateOwner = Boolean(
@@ -240,6 +250,45 @@ function Auth({
     (invite && (session.readiness.mode === "local" || inviteCreate));
   const blocked =
     session.setupRequired && session.readiness.mode === "production";
+  const acceptWithSession = Boolean(
+    signedInIdentity?.verified &&
+    signedInIdentity.email.toLowerCase() === inviteInfo?.email.toLowerCase(),
+  );
+  const wrongAccount = Boolean(
+    signedInIdentity &&
+    signedInIdentity.email.toLowerCase() !== inviteInfo?.email.toLowerCase(),
+  );
+
+  useEffect(() => {
+    if (!invite) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [info, identity] = await Promise.all([
+          request<InvitationInfo>("/api/auth/invitation", {
+            method: "POST",
+            body: JSON.stringify({ token: invite }),
+          }),
+          session.readiness.mode === "production"
+            ? productionIdentity()
+            : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        setInviteInfo(info);
+        setName(info.name);
+        setEmail(info.email);
+        setSignedInIdentity(identity);
+        if (identity?.verified) setInviteCreate(false);
+      } catch (failure) {
+        if (!cancelled) setInviteLookupError(authGuidance(failure, true));
+      } finally {
+        if (!cancelled) setInviteLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [invite, session.readiness.mode]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -247,20 +296,24 @@ function Auth({
     setBusy(true);
     try {
       if (invite) {
+        if (!inviteInfo || inviteLookupError)
+          throw Error("Open a valid invitation link before continuing.");
         if (session.readiness.mode === "production") {
-          if (inviteCreate) {
-            const ready = await productionSignUp(email, password, name);
-            if (!ready) {
-              setVerification(
-                "Check your email to verify your account, then return to this invitation link and sign in. Your invitation stays in this URL.",
-              );
-              return;
-            }
-          } else await productionLogin(email, password);
-          await request("/api/auth/accept-invite", {
-            method: "POST",
-            body: JSON.stringify({ token: invite, name }),
+          const result = await joinProductionInvitation({
+            token: invite,
+            email,
+            name,
+            password,
+            createAccount: inviteCreate,
           });
+          if (result === "verification_required") {
+            setVerification(
+              "Account registration submitted. Open the confirmation email, then return to this invitation link to accept access. If you registered before, choose Sign in to accept and use your existing password.",
+            );
+            setPassword("");
+            setInviteCreate(false);
+            return;
+          }
         } else
           await request("/api/auth/accept-invite", {
             method: "POST",
@@ -286,7 +339,7 @@ function Auth({
         });
       await onReady();
     } catch (e) {
-      setError((e as Error).message);
+      setError(authGuidance(e, Boolean(invite)));
     } finally {
       setBusy(false);
     }
@@ -327,7 +380,11 @@ function Auth({
             {blocked
               ? "Connect your workspace"
               : invite
-                ? "Join your team"
+                ? acceptWithSession
+                  ? "Accept your invitation"
+                  : inviteCreate
+                    ? "Create your account"
+                    : "Sign in to accept"
                 : ownerCreate
                   ? "Create your owner account"
                   : isSetup
@@ -338,13 +395,26 @@ function Auth({
             {blocked
               ? "The production database and authentication need to be connected before you can sign in."
               : invite
-                ? "Create your account to accept the project invitation."
+                ? acceptWithSession
+                  ? "Your verified account is ready to join this project."
+                  : inviteCreate
+                    ? "New here? Create your own login to join this project."
+                    : "Use your existing account password to accept this invitation."
                 : ownerCreate
                   ? "Use the email address authorized to own this workspace. Verify it before signing in."
                   : isSetup
                     ? "Create the first owner account. Project data is stored on this computer."
                     : "Access the projects and records assigned to your account."}
           </p>
+          {invite && (
+            <div className="form-note" role="status">
+              {inviteLoading
+                ? "Checking your invitation…"
+                : inviteInfo
+                  ? `Invitation for ${inviteInfo.name} · ${inviteInfo.role === "owner" ? "Owner" : inviteInfo.role} · ${inviteInfo.projects.join(", ")}. First create your login, verify your email, then accept this invitation. The invitation does not create a password.`
+                  : "Invitation could not be checked."}
+            </div>
+          )}
           {blocked ? (
             <>
               <div className="setup-list">
@@ -367,30 +437,76 @@ function Auth({
           ) : (
             <form onSubmit={submit}>
               <ErrorBox error={error} />
+              <ErrorBox error={inviteLookupError} />
+              {wrongAccount && (
+                <div className="inline-notice" role="alert">
+                  A different account is signed in. Sign out here before
+                  accepting this invitation.
+                </div>
+              )}
+              {acceptWithSession && (
+                <div className="inline-notice" role="status">
+                  Your email is verified. Accept the invitation below to join
+                  this project.
+                </div>
+              )}
+              {signedInIdentity && invite && (
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await productionLogout();
+                      setSignedInIdentity(null);
+                      setPassword("");
+                      setError("");
+                    } catch (failure) {
+                      setError(authGuidance(failure, true));
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  Use a different account
+                </Button>
+              )}
               {verification && (
                 <div className="inline-notice" role="status">
                   <CheckCircle size={18} />
                   {verification}
                 </div>
               )}
-              {invite && session.readiness.mode === "production" && (
-                <div className="segmented invite-auth-choice">
-                  <button
-                    type="button"
-                    className={!inviteCreate ? "selected" : ""}
-                    onClick={() => setInviteCreate(false)}
-                  >
-                    Sign in to accept
-                  </button>
-                  <button
-                    type="button"
-                    className={inviteCreate ? "selected" : ""}
-                    onClick={() => setInviteCreate(true)}
-                  >
-                    Create an account
-                  </button>
-                </div>
-              )}
+              {invite &&
+                session.readiness.mode === "production" &&
+                !acceptWithSession && (
+                  <div className="segmented invite-auth-choice">
+                    <button
+                      type="button"
+                      className={inviteCreate ? "selected" : ""}
+                      aria-pressed={inviteCreate}
+                      onClick={() => {
+                        setInviteCreate(true);
+                        setError("");
+                        setPassword("");
+                      }}
+                    >
+                      Create an account
+                    </button>
+                    <button
+                      type="button"
+                      className={!inviteCreate ? "selected" : ""}
+                      aria-pressed={!inviteCreate}
+                      onClick={() => {
+                        setInviteCreate(false);
+                        setError("");
+                        setPassword("");
+                      }}
+                    >
+                      Sign in to accept
+                    </button>
+                  </div>
+                )}
               {canCreateOwner && (
                 <div className="segmented invite-auth-choice">
                   <button
@@ -411,7 +527,9 @@ function Auth({
                   </button>
                 </div>
               )}
-              {(isSetup || invite || ownerCreate) && (
+              {(isSetup ||
+                (invite && inviteCreate && !acceptWithSession) ||
+                ownerCreate) && (
                 <div className="field">
                   <label htmlFor="auth-name">Your name</label>
                   <input
@@ -430,37 +548,52 @@ function Auth({
                     id="auth-email"
                     type="email"
                     autoComplete="email"
+                    readOnly={Boolean(inviteInfo)}
+                    spellCheck={false}
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
               )}
-              <div className="field">
-                <label htmlFor="auth-password">Password</label>
-                <input
-                  id="auth-password"
-                  type="password"
-                  autoComplete={
-                    creatingPassword ? "new-password" : "current-password"
-                  }
-                  minLength={creatingPassword ? 14 : undefined}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                {(isSetup || invite || ownerCreate) && (
-                  <small>
-                    Use at least 14 characters. A memorable passphrase works
-                    well.
-                  </small>
-                )}
-              </div>
-              <Button tone="primary" disabled={busy} className="auth-submit">
+              {!acceptWithSession && (
+                <div className="field">
+                  <label htmlFor="auth-password">Password</label>
+                  <input
+                    id="auth-password"
+                    type="password"
+                    autoComplete={
+                      creatingPassword ? "new-password" : "current-password"
+                    }
+                    minLength={creatingPassword ? 14 : undefined}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  {creatingPassword && (
+                    <small>
+                      Use at least 14 characters. A memorable passphrase works
+                      well.
+                    </small>
+                  )}
+                </div>
+              )}
+              <Button
+                tone="primary"
+                disabled={
+                  busy ||
+                  inviteLoading ||
+                  Boolean(inviteLookupError) ||
+                  wrongAccount
+                }
+                className="auth-submit"
+              >
                 {busy
                   ? "Opening your workspace…"
                   : invite
-                    ? "Accept invitation"
+                    ? inviteCreate && !acceptWithSession
+                      ? "Create account & verify email"
+                      : "Accept invitation"
                     : ownerCreate
                       ? "Create owner account"
                       : isSetup
@@ -468,6 +601,31 @@ function Auth({
                         : "Sign in"}
                 <ArrowRight size={18} />
               </Button>
+              {invite &&
+                inviteInfo &&
+                session.readiness.mode === "production" &&
+                !acceptWithSession && (
+                  <Button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await productionResendVerification(email);
+                        setVerification(
+                          "If this account needs verification, a confirmation email has been requested. Check your inbox and spam folder, then return to this invitation link.",
+                        );
+                      } catch (failure) {
+                        setError(authGuidance(failure, true));
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Resend confirmation email
+                  </Button>
+                )}
             </form>
           )}
           <div className="auth-trust">

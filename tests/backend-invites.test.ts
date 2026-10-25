@@ -63,7 +63,7 @@ test("production invite requires verified matching Supabase identity, consumes i
       id: stubId,
       name: "Invited teammate",
       email: "invitee@example.test",
-      role: "member",
+      role: "owner",
       projectIds: [projectId],
     });
     state.private.invites[await digest(token)] = {
@@ -103,6 +103,25 @@ test("production invite requires verified matching Supabase identity, consumes i
       body: JSON.stringify({ token, ...extra }),
     });
   try {
+    const lookup = (value: string) =>
+      app.request("https://crm.example.test/api/auth/invitation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: value }),
+      });
+    assert.equal((await lookup("unknown-invitation")).status, 403);
+    const info = await (await lookup(token)).json();
+    assert.equal(info.email, "invitee@example.test");
+    assert.equal(info.role, "owner");
+    assert.equal(info.projects.length, 1);
+    assert.deepEqual(Object.keys(info).sort(), [
+      "email",
+      "expiresAt",
+      "name",
+      "projects",
+      "role",
+    ]);
+    assert.equal(info.authAccountExists, undefined);
     assert.equal((await post()).status, 401);
     assert.equal((await post("invalid")).status, 401);
     assert.equal((await post("unverified")).status, 401);
@@ -128,8 +147,10 @@ test("production invite requires verified matching Supabase identity, consumes i
     const session = await accepted.json();
     assert.equal(session.actor.id, confirmedId);
     assert.equal(session.actor.name, "Verified teammate");
+    assert.equal(session.actor.role, "owner");
     assert.equal(accepted.headers.get("set-cookie"), null);
     assert.equal((await post("verified-invitee")).status, 403);
+    assert.equal((await lookup(token)).status, 403);
     const state = await local.snapshot();
     assert.equal(
       state.members.some((m) => m.id === stubId),
