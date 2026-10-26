@@ -25,7 +25,7 @@ activation changes.
 | Stage | Default cadence (India time) | Enabled | Hard limit | Required input | Output |
 | --- | --- | --- | --- | --- | --- |
 | Research and qualification | Daily, 09:00 | Yes | 3 contacts | Existing backlog and fresh sources | Source packet; no draft |
-| Personal outreach drafts | Daily, 10:30 | Yes | 3 drafts | Fresh, unconsumed research receipt | Review-only drafts |
+| Personal outreach drafts | Daily, 10:30 | Yes | 3 primary drafts | Fresh, unconsumed research receipt | One review-only primary draft per contact plus a conditional channel plan |
 | Reply and follow-up review | Daily, 12:00 and 17:00 | Yes | Bounded project scope | Verified DealDock/known-contact email and calendar scope | Classification or human task |
 | Weekly learning | Friday, 16:00 | Yes | 1 experiment | Stored outcomes and receipts | One reviewable learning proposal |
 
@@ -33,10 +33,19 @@ activation changes.
 with no qualifying work records a quiet, successful receipt rather than
 inventing work. All stages use Asia/Kolkata dates for receipt keys.
 
+The existing legacy-qualified list is a research backfill queue, not permission
+to generate a blanket set of messages. Each research run takes the next three
+unreviewed active records, records a detailed dossier, and advances only the
+ones with current owned-offer evidence. The paired drafting run creates one
+primary message for each eligible packet. That cadence deliberately grows the
+review queue at the same pace as founders can inspect it.
+
 ## Dependencies and repeat protection
 
 1. Research must store primary-source facts, checked timestamps, unknowns,
-   `draftEligible`, and the current contact version.
+   `draftEligible`, the current contact version, and a channel dossier. The dossier
+   may contain an Instagram identity, a public LinkedIn URL, and a published
+   business email only when each has its own source URL and observed date.
 2. Drafting can consume only the latest completed research receipt less than
    seven days old. It checks suppression and contact version again. A consumed
    packet is a successful no-op on rerun.
@@ -56,10 +65,39 @@ Archiving stale drafts does not make old evidence fresh.
   LinkedIn connection requests per calendar day, after verified actual sends.
 - Unknown send totals mean remaining capacity is unknown. Queue rather than
   infer a safe allowance.
-- Follow-ups may be proposed around days 4 and 10, maximum two, and stop on
+- Follow-ups may be proposed only after a recorded manual send: day 4 (a
+  verified LinkedIn connection request, if available), day 8 (a verified public
+  business email, if available), and day 12 (one final follow-up in the most
+  natural existing conversation). These are conditional human tasks, not
+  automatic drafts or sends. Use no more than two follow-ups total, and stop on
   any reply or opt-out.
 - Stable project/contact/channel/purpose keys prevent duplicate drafts. Never
   overwrite approved or sent content.
+
+## Channel and enrichment policy
+
+The DealDock campaign is Instagram-first. A verified Instagram identity and a
+source-led question make Instagram the default first touch. A published LinkedIn
+profile or business email is useful context, not permission to blast every
+channel. Research records availability and lineage; it does not guess addresses,
+scrape LinkedIn, or treat a directory/list-broker result as verified.
+
+Use the sequence below only after the previous step has a recorded manual send,
+has no reply/opt-out, and capacity remains. A person with no verified secondary
+channel simply stays out of that step.
+
+| Relative day | Manual action | Preconditions |
+| --- | --- | --- |
+| 0 | Source-led Instagram DM | Verified Instagram identity and a human-reviewed primary draft |
+| 4 | LinkedIn connection request | Day-0 send is recorded, no reply, and a public LinkedIn URL is verified |
+| 8 | Cold email | No reply, a public business email is published on the creator's own site, deliverability/compliance are manually confirmed, and the email is human-reviewed |
+| 12 | One final follow-up | No reply; use the most natural existing conversation; do not add another channel |
+| 30+ | Re-research or park | New public signal only; never keep nudging a silent contact |
+
+Email is therefore an experiment for a small, manually verified cohort, not a
+default campaign. Keep a source URL/date, business purpose, opt-out handling,
+and deliverability status before any real email is sent. The ₹0 operating mode
+does not use credit-based enrichment or guessed emails.
 
 ## How a teammate changes a schedule safely
 
