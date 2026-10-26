@@ -24,14 +24,31 @@ activation changes.
 
 | Stage | Default cadence (India time) | Enabled | Hard limit | Required input | Output |
 | --- | --- | --- | --- | --- | --- |
-| Research and qualification | Daily, 09:00 | Yes | 3 contacts | Existing backlog and fresh sources | Source packet; no draft |
-| Personal outreach drafts | Daily, 10:30 | Yes | 3 primary drafts | Fresh, unconsumed research receipt | One review-only primary draft per contact plus a conditional channel plan |
-| Reply and follow-up review | Daily, 12:00 and 17:00 | Yes | Bounded project scope | Verified DealDock/known-contact email and calendar scope | Classification or human task |
-| Weekly learning | Friday, 16:00 | Yes | 1 experiment | Stored outcomes and receipts | One reviewable learning proposal |
+| Research and qualification | Daily, 09:00; catch-up at 13:00, 17:00, 21:00 | Yes | 3 contacts | Existing backlog and fresh sources | Source packet; no draft |
+| Personal outreach drafts | Daily, 10:30; catch-up at 14:30, 18:30, 22:30 | Yes | 3 primary drafts | Fresh, unconsumed research receipt | One review-only primary draft per contact plus a conditional channel plan |
+| Reply and follow-up review | Daily, 12:00 and 17:00; catch-up at 14:00, 19:00, 22:00 | Yes | Bounded project scope | Verified DealDock/known-contact email and calendar scope | Classification or human task |
+| Weekly learning | Friday, 16:00; catch-up Friday/Saturday 20:00 or Saturday 16:00 | Yes | 1 experiment | Stored outcomes and receipts | One reviewable learning proposal |
 
 “Enabled: Yes” means a run may proceed when its prerequisites are met. A run
 with no qualifying work records a quiet, successful receipt rather than
 inventing work. All stages use Asia/Kolkata dates for receipt keys.
+
+## Local availability and catch-up windows
+
+These are **local** Codex schedules. A laptop that is off, asleep, or not
+running the desktop app cannot execute the missed clock time, and there is no
+supported startup trigger that can safely run this local repository immediately
+on sign-in. The later windows above are the bounded recovery: when the machine
+is available again, the first subsequent window attempts the missed logical
+stage. If every window has passed, the next primary window is the next safe
+attempt. A founder can still choose **Run now** in Scheduled for an immediate,
+manually requested run.
+
+Catch-up windows never expand daily volume. Research has one logical daily
+receipt; drafting consumes a packet once; the 14:00 reply retry represents the
+12:00 slot and the 19:00/22:00 retries represent the 17:00 slot. Weekly
+learning uses one ISO-week receipt across its Friday/Saturday windows. A
+completed logical receipt makes all later catch-up windows a quiet no-op.
 
 The existing legacy-qualified list is a research backfill queue, not permission
 to generate a blanket set of messages. Each research run takes the next three
@@ -42,7 +59,9 @@ review queue at the same pace as founders can inspect it.
 
 ## Dependencies and repeat protection
 
-1. Research must store primary-source facts, checked timestamps, unknowns,
+1. Research must first check the completed receipt for the current
+   Asia/Kolkata date. A completed daily receipt is a no-op for later windows;
+   otherwise it stores primary-source facts, checked timestamps, unknowns,
    `draftEligible`, the current contact version, and a channel dossier. The dossier
    may contain an Instagram identity, a public LinkedIn URL, and a published
    business email only when each has its own source URL and observed date.
@@ -51,9 +70,11 @@ review queue at the same pace as founders can inspect it.
    packet is a successful no-op on rerun.
 3. Reply review reads only the approved mailbox/calendar scope, excludes
    infrastructure messages, and stops no-reply follow-ups when an actual reply
-   or opt-out is recorded.
-4. Weekly learning uses actual stored outcomes. Unknown meetings, pilots,
-   payments, and revenue remain unknown.
+   or opt-out is recorded. A fallback reuses the missed 12:00 or 17:00 logical
+   receipt key instead of creating another same-day reply review.
+4. Weekly learning first checks for the current ISO-week receipt across the
+   Friday/Saturday window. It uses actual stored outcomes. Unknown meetings,
+   pilots, payments, and revenue remain unknown.
 
 Research normally does not recheck evidence less than seven days old. A real
 reply or an upcoming meeting is the exception, not the desire for more copy.
