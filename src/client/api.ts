@@ -66,6 +66,25 @@ export async function productionResendVerification(email: string) {
   });
   if (error) throw error;
 }
+export function isPasswordRecoveryRedirect() {
+  return (
+    new URLSearchParams(location.hash.replace(/^#/, "")).get("type") ===
+    "recovery"
+  );
+}
+export async function productionRequestPasswordReset(email: string) {
+  if (!supabase) throw Error("Production authentication is not configured.");
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    { redirectTo: verificationRedirectUrl(location.href) },
+  );
+  if (error) throw error;
+}
+export async function productionUpdatePassword(password: string) {
+  if (!supabase) throw Error("Production authentication is not configured.");
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
 type InviteJoinServices = {
   identity: typeof productionIdentity;
   signUp: typeof productionSignUp;

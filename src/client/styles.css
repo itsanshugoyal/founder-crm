@@ -1195,6 +1195,42 @@ tbody tr:hover {
   font-size: 11px;
   white-space: nowrap;
 }
+.quick-record-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.quick-record-controls select {
+  max-width: 142px;
+  min-height: 31px;
+  padding: 5px 25px 5px 8px;
+  border: 1px solid #d9ded5;
+  border-radius: 5px;
+  background: #fff;
+  color: #405047;
+  font:
+    500 11px "Geist",
+    sans-serif;
+}
+.quick-record-controls select:hover:not(:disabled) {
+  border-color: #aeb99f;
+  background: #fbfcf7;
+}
+.quick-record-controls select:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.quick-record-controls-compact {
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.quick-record-controls-compact select {
+  max-width: 116px;
+  min-height: 28px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 10px;
+}
 .cell-sub {
   display: block;
   color: #9d9d9d;
@@ -2878,6 +2914,20 @@ tbody tr:hover {
   margin-top: 2px;
   font-size: 13px;
 }
+.auth-recovery-link {
+  display: block;
+  width: fit-content;
+  margin: 15px auto 0;
+  color: var(--accent-ink);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.auth-recovery-link:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  text-decoration: none;
+}
 .auth-trust {
   display: flex;
   align-items: center;
@@ -3079,6 +3129,135 @@ tbody tr:hover {
 }
 .work-navigation .work-nav-active strong {
   color: #3e4d1f;
+}
+.work-view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -8px 0 15px;
+}
+.work-view-toolbar p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.task-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(235px, 1fr));
+  gap: 13px;
+  overflow: auto;
+  min-height: 410px;
+  padding-bottom: 14px;
+}
+.task-column {
+  min-height: 340px;
+  border: 1px solid #d9ded5;
+  border-top: 3px solid #202522;
+  background: #f5f4ef;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+.task-column-drop-target {
+  border-color: #829c45;
+  background: #f1f6dc;
+}
+.task-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px;
+  border-bottom: 1px solid #d9ded5;
+  color: #344038;
+  font:
+    650 12px "Geist Mono",
+    monospace;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.task-column-head strong {
+  display: grid;
+  min-width: 22px;
+  min-height: 22px;
+  place-items: center;
+  border-radius: 99px;
+  background: #e4e8df;
+  color: #536056;
+  font-size: 10px;
+}
+.task-column-cards {
+  display: flex;
+  min-height: 283px;
+  flex-direction: column;
+  gap: 9px;
+  padding: 9px;
+}
+.task-card {
+  padding: 13px;
+  border: 1px solid #d9ded5;
+  background: #fff;
+  box-shadow: 0 1px 2px #2025220a;
+  cursor: grab;
+}
+.task-card:active {
+  cursor: grabbing;
+}
+.task-card-dragging {
+  opacity: 0.55;
+}
+.task-card-title {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.task-card-title svg {
+  flex: none;
+  color: var(--accent-ink);
+}
+.task-card > p {
+  min-height: 18px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 11px 0 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ebece6;
+  color: var(--muted);
+  font-size: 11px;
+}
+.task-card-meta .avatar {
+  width: 19px;
+  height: 19px;
+  font-size: 7px;
+}
+.task-card .quick-record-controls {
+  padding-top: 2px;
+}
+.task-board-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 54px;
+  border: 1px dashed #c8cec0;
+  color: #708065;
+  font-size: 11px;
 }
 .mobile-sidebar {
   position: fixed;
@@ -4392,6 +4571,18 @@ tbody tr:hover {
   }
   .work-focus .btn {
     justify-self: start;
+  }
+  .work-view-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .task-board {
+    grid-template-columns: repeat(5, minmax(220px, 82vw));
+  }
+  .quick-record-controls:not(.quick-record-controls-compact) {
+    align-items: stretch;
+    flex-direction: column;
   }
   .workspace-section-heading {
     align-items: start;

@@ -73,12 +73,11 @@ import { draftPurpose } from "../shared/draft-purpose";
 export const label = (s: string) =>
   s.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+const statusKey = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
 const statusIs = (r: CrmRecord, ...statuses: string[]) =>
-  statuses.some(
-    (s) =>
-      r.status.toLowerCase().replaceAll("_", " ") ===
-      s.toLowerCase().replaceAll("_", " "),
-  );
+  statuses.some((status) => statusKey(r.status) === statusKey(status));
 
 const isComplete = (r: CrmRecord) =>
   complete({ ...r, status: label(r.status) });
@@ -163,6 +162,140 @@ function Owner({ id, record }: { id: string | null; record?: CrmRecord }) {
     </span>
   ) : (
     <span className="muted">Unassigned</span>
+  );
+}
+
+const serverManagedData = new Set([
+  "identityAliases",
+  "deliveryRecordedAt",
+  "deliveryChannel",
+  "deliveryReference",
+  "approvedHash",
+  "approvedAt",
+  "approvedBy",
+  "sendState",
+  "sentAt",
+  "providerReceipt",
+  "issuedAt",
+  "paidAt",
+  "paidCents",
+  "shareToken",
+  "sendError",
+  "lastSendRequestId",
+]);
+
+function editableData(record: CrmRecord): Fields {
+  return Object.fromEntries(
+    Object.entries(record.data).filter(([key]) => !serverManagedData.has(key)),
+  );
+}
+
+function QuickRecordControls({
+  record,
+  statuses,
+  compact = false,
+}: {
+  record: CrmRecord;
+  statuses: string[];
+  compact?: boolean;
+}) {
+  const { act, toast, workspace } = useCRM();
+  const [busy, setBusy] = useState(false);
+  const members = workspace.members.filter((member) =>
+    member.projectIds.includes(record.projectId),
+  );
+  const founderMembers = members.filter((member) =>
+    /anshu|nahush/i.test(member.name),
+  );
+  const collaborators = Array.isArray(record.data.collaboratorIds)
+    ? record.data.collaboratorIds.filter(
+        (id): id is string => typeof id === "string",
+      )
+    : [];
+  const selectedOwner =
+    collaborators.length > 1 ? "__both" : record.ownerId || "";
+  const currentStatuses = [...statuses, label(record.status)].filter(
+    (status, index, all) =>
+      all.findIndex(
+        (candidate) => statusKey(candidate) === statusKey(status),
+      ) === index,
+  );
+
+  async function change(payload: Fields) {
+    setBusy(true);
+    try {
+      await act("update_record", payload, record);
+    } catch (error) {
+      toast((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        "quick-record-controls",
+        compact && "quick-record-controls-compact",
+      )}
+    >
+      <label>
+        <span className="sr-only">Status for {record.title}</span>
+        <select
+          aria-label={`Change status for ${record.title}`}
+          disabled={busy}
+          value={label(record.status)}
+          onChange={(event) =>
+            void change({
+              status: event.target.value.toLowerCase().replaceAll(" ", "_"),
+            })
+          }
+        >
+          {currentStatuses.map((status) => (
+            <option key={status} value={status}>
+              {status}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="sr-only">Assignee for {record.title}</span>
+        <select
+          aria-label={`Change assignee for ${record.title}`}
+          disabled={busy}
+          value={selectedOwner}
+          onChange={(event) => {
+            const nextOwner = event.target.value;
+            const data = editableData(record);
+            if (nextOwner === "__both") {
+              data.collaboratorIds = founderMembers.map((member) => member.id);
+            } else if (collaborators.length) {
+              data.collaboratorIds = [];
+            }
+            void change({
+              ownerId:
+                nextOwner === "__both"
+                  ? founderMembers.find((member) => /anshu/i.test(member.name))
+                      ?.id ||
+                    founderMembers[0]?.id ||
+                    null
+                  : nextOwner || null,
+              ...(data.collaboratorIds !== undefined ? { data } : {}),
+            });
+          }}
+        >
+          <option value="">Unassigned</option>
+          {founderMembers.length >= 2 && (
+            <option value="__both">Both founders</option>
+          )}
+          {members.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 }
 
@@ -795,7 +928,7 @@ export function RecordsView({
   const filtered = records.filter(
     (r) =>
       (filter.status === "all" ||
-        r.status.toLowerCase() === filter.status.toLowerCase()) &&
+        label(r.status).toLowerCase() === label(filter.status).toLowerCase()) &&
       (filter.owner === "all" || (r.ownerId || "none") === filter.owner) &&
       `${r.title} ${JSON.stringify(r.data)}`
         .toLowerCase()
@@ -806,7 +939,12 @@ export function RecordsView({
     Math.min(page, pages - 1) * 15,
     Math.min(page, pages - 1) * 15 + 15,
   );
-  const statuses = [...new Set(records.map((r) => r.status))];
+  const statuses = Array.from(
+    new Set([
+      ...modules[kind].statuses,
+      ...records.map((r) => label(r.status)),
+    ]),
+  );
   const contacts = workspace.records.filter((r) => r.kind === "contact");
   const mod = modules[kind];
   function updateFilter(next: Partial<Filter>) {
@@ -1049,7 +1187,11 @@ export function RecordsView({
                         </button>
                       </td>
                       <td>
-                        <Badge>{label(r.status)}</Badge>
+                        <QuickRecordControls
+                          record={r}
+                          statuses={modules[kind].statuses}
+                          compact
+                        />
                       </td>
                       {kind === "contact" ? (
                         <>
@@ -1459,8 +1601,134 @@ export function PipelineView() {
   );
 }
 
+function TaskBoard({ tasks }: { tasks: CrmRecord[] }) {
+  const { act, openCreate, openRecord, toast } = useCRM();
+  const [draggingId, setDraggingId] = useState("");
+  const [dropStatus, setDropStatus] = useState("");
+  const statuses = [
+    ...modules.task.statuses,
+    ...tasks.map((task) => label(task.status)),
+  ].filter(
+    (status, index, all) =>
+      all.findIndex(
+        (candidate) => statusKey(candidate) === statusKey(status),
+      ) === index,
+  );
+
+  async function moveTask(id: string, status: string) {
+    const task = tasks.find((record) => record.id === id);
+    if (!task || statusIs(task, status)) return;
+    try {
+      await act(
+        "update_record",
+        { status: status.toLowerCase().replaceAll(" ", "_") },
+        task,
+      );
+    } catch (error) {
+      toast((error as Error).message);
+    }
+  }
+
+  return (
+    <div className="task-board" aria-label="Task Kanban board">
+      {statuses.map((status) => {
+        const cards = tasks.filter((task) => statusIs(task, status));
+        const isDropTarget = dropStatus === status;
+        return (
+          <section
+            key={status}
+            className={cn(
+              "task-column",
+              isDropTarget && "task-column-drop-target",
+            )}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDropStatus(status);
+            }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node))
+                setDropStatus("");
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const id = event.dataTransfer.getData("text/plain") || draggingId;
+              setDropStatus("");
+              setDraggingId("");
+              void moveTask(id, status);
+            }}
+          >
+            <header className="task-column-head">
+              <span>{status}</span>
+              <strong>{cards.length}</strong>
+            </header>
+            <div className="task-column-cards">
+              {cards.map((task) => (
+                <article
+                  key={task.id}
+                  className={cn(
+                    "task-card",
+                    draggingId === task.id && "task-card-dragging",
+                  )}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData("text/plain", task.id);
+                    event.dataTransfer.effectAllowed = "move";
+                    setDraggingId(task.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId("");
+                    setDropStatus("");
+                  }}
+                >
+                  <button
+                    className="task-card-title"
+                    onClick={() => openRecord(task)}
+                  >
+                    {task.title}
+                    <ArrowUpRight size={15} />
+                  </button>
+                  <p>{text(task, "description") || "Add a clear next step"}</p>
+                  <div className="task-card-meta">
+                    <Owner id={task.ownerId} record={task} />
+                    <span
+                      className={cn(
+                        task.dueAt &&
+                          new Date(task.dueAt) < new Date() &&
+                          !isComplete(task) &&
+                          "date-overdue",
+                      )}
+                    >
+                      {dateLabel(task.dueAt)}
+                    </span>
+                  </div>
+                  <QuickRecordControls
+                    record={task}
+                    statuses={statuses}
+                    compact
+                  />
+                </article>
+              ))}
+              {!cards.length && (
+                <button
+                  className="task-board-empty"
+                  onClick={() => openCreate("task")}
+                >
+                  <Plus size={15} />
+                  Add task
+                </button>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 export function WorkView() {
   const [tab, setTab] = useState("task");
+  const [taskView, setTaskView] = useState<"board" | "list">("board");
   const { openRecord, openCreate } = useCRM();
   const records = useRecords();
   const openTasks = records
@@ -1545,6 +1813,40 @@ export function WorkView() {
       </div>
       {tab === "playbooks" ? (
         <PlaybooksView />
+      ) : tab === "task" ? (
+        <>
+          <div className="work-view-toolbar">
+            <div className="segmented" aria-label="Task view">
+              <button
+                className={taskView === "board" ? "selected" : ""}
+                aria-pressed={taskView === "board"}
+                onClick={() => setTaskView("board")}
+              >
+                <Kanban size={16} />
+                Board
+              </button>
+              <button
+                className={taskView === "list" ? "selected" : ""}
+                aria-pressed={taskView === "list"}
+                onClick={() => setTaskView("list")}
+              >
+                <ListBullets size={16} />
+                List
+              </button>
+            </div>
+            <p>
+              Drag a card to move it. Use its status menu for a keyboard-safe
+              move.
+            </p>
+          </div>
+          {taskView === "board" ? (
+            <TaskBoard
+              tasks={records.filter((record) => record.kind === "task")}
+            />
+          ) : (
+            <RecordsView key={tab} kind="task" hideHead />
+          )}
+        </>
       ) : (
         <RecordsView key={tab} kind={tab as RecordKind} hideHead />
       )}

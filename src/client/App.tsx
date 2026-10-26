@@ -56,6 +56,9 @@ import {
   productionSignUp,
   productionIdentity,
   productionResendVerification,
+  isPasswordRecoveryRedirect,
+  productionRequestPasswordReset,
+  productionUpdatePassword,
   joinProductionInvitation,
   RequestError,
 } from "./api";
@@ -66,6 +69,7 @@ import { authGuidance } from "../shared/auth-guidance";
 
 // Capture safe guidance before the Auth client consumes and clears callback fragments.
 const initialVerificationError = verificationCallbackError(location.hash);
+const initialPasswordRecovery = isPasswordRecoveryRedirect();
 
 import { Button, Modal, Confirm, ErrorBox, RecordForm, cn } from "./ui";
 import { ViewBoundary } from "./ViewBoundary";
@@ -601,6 +605,32 @@ function Auth({
                         : "Sign in"}
                 <ArrowRight size={18} />
               </Button>
+              {!invite &&
+                !ownerCreate &&
+                !isSetup &&
+                session.readiness.mode === "production" && (
+                  <button
+                    type="button"
+                    className="auth-recovery-link"
+                    disabled={busy || !email.trim()}
+                    onClick={async () => {
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await productionRequestPasswordReset(email);
+                        setVerification(
+                          "If this email has a Founder CRM account, a password reset link has been requested. Check the inbox and spam folder.",
+                        );
+                      } catch (failure) {
+                        setError(authGuidance(failure, false));
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Forgot your password?
+                  </button>
+                )}
               {invite &&
                 inviteInfo &&
                 session.readiness.mode === "production" &&
@@ -640,8 +670,92 @@ function Auth({
   );
 }
 
+function PasswordRecovery({ onReady }: { onReady: () => Promise<void> }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    if (password.length < 14)
+      return setError("Use at least 14 characters for your new password.");
+    if (password !== confirm)
+      return setError("The two passwords do not match.");
+    setBusy(true);
+    try {
+      await productionUpdatePassword(password);
+      history.replaceState(null, "", location.pathname + location.search);
+      await onReady();
+    } catch (failure) {
+      setError(
+        `${authGuidance(failure, false)} Request another reset link if this one has expired.`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="auth-layout">
+      <header className="auth-brand">
+        <Brand />
+        <div className="auth-intro">
+          <span className="eyebrow">SECURE ACCESS</span>
+          <h1>Choose a new password.</h1>
+          <p>
+            This link only opens a password reset. It does not change project
+            access.
+          </p>
+        </div>
+      </header>
+      <section className="auth-form-wrap">
+        <form className="auth-form" onSubmit={submit}>
+          <span className="eyebrow">PASSWORD RESET</span>
+          <h2>Set a new password</h2>
+          <p>Use a memorable passphrase of at least 14 characters.</p>
+          <ErrorBox error={error} />
+          <div className="field">
+            <label htmlFor="recovery-password">New password</label>
+            <input
+              id="recovery-password"
+              autoFocus
+              type="password"
+              autoComplete="new-password"
+              minLength={14}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="recovery-confirm">Confirm new password</label>
+            <input
+              id="recovery-confirm"
+              type="password"
+              autoComplete="new-password"
+              minLength={14}
+              required
+              value={confirm}
+              onChange={(event) => setConfirm(event.target.value)}
+            />
+          </div>
+          <Button tone="primary" className="auth-submit" disabled={busy}>
+            {busy ? "Saving your password…" : "Save new password"}
+            <ArrowRight size={18} />
+          </Button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [recoveryPending, setRecoveryPending] = useState(
+    initialPasswordRecovery,
+  );
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [projectId, setProjectId] = useState(
     () => localStorage.getItem("founder-project") || "",
@@ -834,6 +948,16 @@ export default function App() {
           Try again
         </Button>
       </div>
+    );
+
+  if (recoveryPending || isPasswordRecoveryRedirect())
+    return (
+      <PasswordRecovery
+        onReady={async () => {
+          setRecoveryPending(false);
+          await load();
+        }}
+      />
     );
 
   if (!session.authenticated) return <Auth session={session} onReady={load} />;

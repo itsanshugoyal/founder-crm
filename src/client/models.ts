@@ -132,7 +132,7 @@ export const modules: Record<RecordKind, Module> = {
     label: "Tasks",
     singular: "task",
     description: "Assigned tasks, priorities, statuses, and due dates.",
-    statuses: ["To do", "In progress", "Waiting", "Done"],
+    statuses: ["To do", "In progress", "Waiting", "Blocked", "Done"],
     fields: [
       {
         key: "priority",
