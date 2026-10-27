@@ -106,7 +106,7 @@ function PageHead({
 }) {
   return (
     <header className="page-head">
-      <div>
+      <div className="page-head-copy">
         <div className="eyebrow">{eyebrow || "PROJECT WORKSPACE"}</div>
         <h1>{title}</h1>
         <p>{description}</p>
@@ -120,6 +120,7 @@ function PageHead({
           </Button>
         )}
       </div>
+      <span className="page-head-mark" aria-hidden="true" />
     </header>
   );
 }
@@ -299,6 +300,144 @@ function QuickRecordControls({
   );
 }
 
+function RecordContext({
+  record,
+  eyebrow,
+}: {
+  record?: CrmRecord;
+  eyebrow: string;
+}) {
+  const { openRecord } = useCRM();
+  const records = useRecords();
+  if (!record)
+    return (
+      <aside
+        className="record-context record-context-empty"
+        aria-label="Selected record context"
+      >
+        <span className="eyebrow">{eyebrow}</span>
+        <h2>Select a record</h2>
+        <p>
+          Choose an item to see its owner, status, and the next useful step
+          without opening a drawer.
+        </p>
+      </aside>
+    );
+  const contact = record.contactId
+    ? records.find((item) => item.id === record.contactId)
+    : undefined;
+  const nextStep =
+    text(record, "nextAction") ||
+    text(record, "description") ||
+    text(record, "agenda") ||
+    text(record, "summary") ||
+    "Add the next useful step in the full record.";
+  return (
+    <aside
+      className="record-context"
+      aria-label={`Context for ${record.title}`}
+    >
+      <div className="record-context-top">
+        <span className="eyebrow">{eyebrow}</span>
+        <span className="context-mark" aria-hidden="true" />
+      </div>
+      <div className="record-context-person">
+        <span className="avatar">
+          {initials(contact?.title || record.title)}
+        </span>
+        <div>
+          <strong>{contact?.title || modules[record.kind].singular}</strong>
+          <span>
+            {contact
+              ? text(contact, "company") || "Linked person"
+              : label(record.kind)}
+          </span>
+        </div>
+      </div>
+      <h2>{record.title}</h2>
+      <div className="record-context-meta">
+        <Owner id={record.ownerId} record={record} />
+        <span>
+          {record.dueAt ? `Due ${dateLabel(record.dueAt)}` : "No due date"}
+        </span>
+      </div>
+      <QuickRecordControls
+        record={record}
+        statuses={modules[record.kind].statuses}
+      />
+      <div className="context-section">
+        <span>WHY IT IS HERE</span>
+        <p>
+          {record.kind === "draft"
+            ? "This draft is stored for review. Approval and any individual send are separate actions."
+            : `${label(record.status)} · ${modules[record.kind].description}`}
+        </p>
+      </div>
+      <div className="context-section">
+        <span>NEXT USEFUL STEP</span>
+        <p>{nextStep}</p>
+      </div>
+      <Button tone="primary" onClick={() => openRecord(record)}>
+        Open full record
+        <ArrowUpRight size={16} />
+      </Button>
+    </aside>
+  );
+}
+
+function DaybookCard({
+  record,
+  icon,
+  selected,
+  onSelect,
+}: {
+  record: CrmRecord;
+  icon: ReactNode;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const records = useRecords();
+  const linkedPerson = record.contactId
+    ? records.find((candidate) => candidate.id === record.contactId)
+    : undefined;
+  const timing = record.dueAt
+    ? dateLabel(record.dueAt)
+    : record.kind === "meeting" && text(record, "startsAt")
+      ? dateLabel(text(record, "startsAt"))
+      : "Anytime";
+  return (
+    <article
+      className={cn("daybook-card", selected && "daybook-card-selected")}
+    >
+      <div className="daybook-time">{timing}</div>
+      <button
+        className="daybook-card-main"
+        aria-pressed={selected}
+        onClick={onSelect}
+      >
+        <span className="daybook-record-type">
+          {icon}
+          {modules[record.kind].singular}
+        </span>
+        <strong>{record.title}</strong>
+        <span className="daybook-record-meta">
+          {linkedPerson?.title ||
+            text(record, "company") ||
+            label(record.status)}
+        </span>
+      </button>
+      <div className="daybook-card-actions">
+        <Owner id={record.ownerId} record={record} />
+        <QuickRecordControls
+          record={record}
+          statuses={modules[record.kind].statuses}
+          compact
+        />
+      </div>
+    </article>
+  );
+}
+
 function MiniList({ records, empty }: { records: CrmRecord[]; empty: string }) {
   const { openRecord } = useCRM();
   return records.length ? (
@@ -333,8 +472,9 @@ export function TodayView() {
   const { workspace, projectId, openCreate, setPage, openRecord } = useCRM();
   const records = useRecords();
   const [queue, setQueue] = useState("tasks");
-  const [onlyMine, setOnlyMine] = useState(false);
+  const [assignee, setAssignee] = useState("everyone");
   const [dueOnly, setDueOnly] = useState(false);
+  const [selectedId, setSelectedId] = useState("");
   const endOfDay = new Date();
   endOfDay.setHours(23, 59, 59, 999);
   const tasks = records.filter(
@@ -398,16 +538,41 @@ export function TodayView() {
         : queue === "meetings"
           ? meetings
           : tasks;
+  const founders = workspace.members.filter((member) =>
+    /anshu|nahush/i.test(member.name),
+  );
+  const recordMatchesAssignee = (record: CrmRecord) => {
+    const collaborators = Array.isArray(record.data.collaboratorIds)
+      ? record.data.collaboratorIds.filter(
+          (id): id is string => typeof id === "string",
+        )
+      : [];
+    if (assignee === "everyone") return true;
+    if (assignee === "__both")
+      return (
+        founders.length >= 2 &&
+        founders.every(
+          (member) =>
+            record.ownerId === member.id || collaborators.includes(member.id),
+        )
+      );
+    return record.ownerId === assignee || collaborators.includes(assignee);
+  };
   const shown = source
     .filter(
       (r) =>
-        (!onlyMine ||
-          r.ownerId === workspace.actor.id ||
-          (Array.isArray(r.data.collaboratorIds) &&
-            r.data.collaboratorIds.includes(workspace.actor.id))) &&
+        recordMatchesAssignee(r) &&
         (!dueOnly || (r.dueAt && new Date(r.dueAt) <= endOfDay)),
     )
     .sort((a, b) => (a.dueAt || "9999").localeCompare(b.dueAt || "9999"));
+  const selectedRecord =
+    shown.find((record) => record.id === selectedId) || shown[0] || focusRecord;
+  const todayRecords = shown.filter(
+    (record) => !record.dueAt || new Date(record.dueAt) <= endOfDay,
+  );
+  const laterRecords = shown.filter(
+    (record) => record.dueAt && new Date(record.dueAt) > endOfDay,
+  );
   const project = workspace.projects.find((p) => p.id === projectId);
   return (
     <>
@@ -428,13 +593,13 @@ export function TodayView() {
           </div>
           <div className="today-heading-copy">
             <span className="eyebrow">
-              {project?.name || "Current project"} / DAILY BRIEF
+              {project?.name || "Current project"} / YOUR DAYBOOK
             </span>
-            <h1>Today’s Brief</h1>
+            <h1>Today, in order.</h1>
             <p>
               {due.length > 0
                 ? `${due.length} ${due.length === 1 ? "commitment needs" : "commitments need"} attention by today.`
-                : "Review the work and conversations that need your attention."}
+                : "Keep the promises. Leave room to think."}
             </p>
             <div className="head-actions">
               <Button onClick={() => openCreate("contact")}>
@@ -448,41 +613,17 @@ export function TodayView() {
             </div>
           </div>
         </div>
-        <div className="brief-focus">
-          <span className="eyebrow">OPEN NEXT / {focusType}</span>
-          {focusRecord ? (
-            <button onClick={() => openRecord(focusRecord)}>
-              <strong>{focusRecord.title}</strong>
-              <span>
-                Open {modules[focusRecord.kind].singular.toLowerCase()}
-                <ArrowUpRight size={17} />
-              </span>
-            </button>
-          ) : (
-            <div className="brief-focus-empty">
-              <strong>No open review items</strong>
-              <span>
-                There are no open tasks, replies, drafts, or meetings.
-              </span>
-            </div>
-          )}
-          {focusRecord && (
-            <div className="brief-focus-meta">
-              <span>
-                {focusRecord.dueAt
-                  ? `Due ${dateLabel(focusRecord.dueAt)}`
-                  : focusRecord.kind === "meeting" &&
-                      text(focusRecord, "startsAt")
-                    ? `Starts ${dateLabel(text(focusRecord, "startsAt"))}`
-                    : "No due date recorded"}
-              </span>
-              <span>
-                {workspace.members.find(
-                  (member) => member.id === focusRecord.ownerId,
-                )?.name || "Unassigned"}
-              </span>
-            </div>
-          )}
+        <div className="brief-focus" aria-label="Today overview">
+          <span className="eyebrow">TODAY’S LOAD</span>
+          <strong className="brief-focus-count">{shown.length}</strong>
+          <span className="brief-focus-label">
+            {shown.length === 1 ? "reviewable record" : "reviewable records"}
+          </span>
+          <span className="brief-focus-note">
+            {focusRecord
+              ? `${focusType.toLowerCase()} selected below`
+              : "Nothing needs review right now"}
+          </span>
         </div>
       </header>
       <div className="attention-strip">
@@ -550,15 +691,38 @@ export function TodayView() {
             <span>
               {shown.length} {shown.length === 1 ? "record" : "records"}
             </span>
-            <div>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={onlyMine}
-                  onChange={(e) => setOnlyMine(e.target.checked)}
-                />
-                Assigned to me
-              </label>
+            <div
+              className="daybook-owner-filter"
+              role="group"
+              aria-label="Show work for"
+            >
+              <span>Show work for</span>
+              <button
+                className={cn(assignee === "everyone" && "selected")}
+                aria-pressed={assignee === "everyone"}
+                onClick={() => setAssignee("everyone")}
+              >
+                Everyone
+              </button>
+              {founders.map((member) => (
+                <button
+                  key={member.id}
+                  className={cn(assignee === member.id && "selected")}
+                  aria-pressed={assignee === member.id}
+                  onClick={() => setAssignee(member.id)}
+                >
+                  {member.name}
+                </button>
+              ))}
+              {founders.length >= 2 && (
+                <button
+                  className={cn(assignee === "__both" && "selected")}
+                  aria-pressed={assignee === "__both"}
+                  onClick={() => setAssignee("__both")}
+                >
+                  Both
+                </button>
+              )}
               <label>
                 <input
                   type="checkbox"
@@ -570,83 +734,61 @@ export function TodayView() {
             </div>
           </div>
           {shown.length ? (
-            <div className="table-scroll">
-              <table className="attention-table">
-                <thead>
-                  <tr>
-                    <th>Record</th>
-                    <th>Owner</th>
-                    <th>Status</th>
-                    <th>Due</th>
-                    <th aria-label="Open record" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.slice(0, 12).map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        <button
-                          className="queue-record"
-                          onClick={() => openRecord(r)}
-                        >
-                          <span
-                            className={cn(
-                              "queue-record-icon",
-                              queue === "replies" && "queue-record-reply",
-                            )}
-                          >
-                            {queue === "drafts" ? (
-                              <NotePencil size={17} />
-                            ) : queue === "meetings" ? (
-                              <CalendarBlank size={17} />
-                            ) : queue === "replies" ? (
-                              <Tray size={17} />
-                            ) : (
-                              <CheckCircle size={17} />
-                            )}
-                          </span>
-                          <span>
-                            <strong>{r.title}</strong>
-                            <small>
-                              {modules[r.kind].singular}
-                              {r.contactId
-                                ? ` · ${records.find((c) => c.id === r.contactId)?.title || "Linked person"}`
-                                : ""}
-                            </small>
-                          </span>
-                        </button>
-                      </td>
-                      <td>
-                        <Owner id={r.ownerId} record={r} />
-                      </td>
-                      <td>
-                        <Badge>{label(r.status)}</Badge>
-                      </td>
-                      <td>
-                        <span
-                          className={cn(
-                            "date-label",
-                            r.dueAt &&
-                              new Date(r.dueAt) < new Date() &&
-                              "date-overdue",
-                          )}
-                        >
-                          {dateLabel(r.dueAt)}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          className="icon-btn"
-                          aria-label={`Open ${r.title}`}
-                          onClick={() => openRecord(r)}
-                        >
-                          <ArrowUpRight size={16} />
-                        </button>
-                      </td>
-                    </tr>
+            <div className="daybook-list">
+              <section
+                className="daybook-section"
+                aria-labelledby="daybook-today"
+              >
+                <div className="daybook-section-head">
+                  <span className="daybook-section-dot" />
+                  <h3 id="daybook-today">Today</h3>
+                  <span>
+                    {todayRecords.length
+                      ? "In order of due time"
+                      : "Nothing due today"}
+                  </span>
+                </div>
+                {todayRecords.map((record) => (
+                  <DaybookCard
+                    key={record.id}
+                    record={record}
+                    selected={selectedRecord?.id === record.id}
+                    onSelect={() => setSelectedId(record.id)}
+                    icon={
+                      record.kind === "draft" ? (
+                        <NotePencil size={14} />
+                      ) : record.kind === "meeting" ? (
+                        <CalendarBlank size={14} />
+                      ) : record.kind === "conversation" ? (
+                        <Tray size={14} />
+                      ) : (
+                        <CheckCircle size={14} />
+                      )
+                    }
+                  />
+                ))}
+              </section>
+              {laterRecords.length > 0 && (
+                <section
+                  className="daybook-section daybook-section-later"
+                  aria-labelledby="daybook-later"
+                >
+                  <div className="daybook-section-head">
+                    <span className="daybook-section-dot" />
+                    <h3 id="daybook-later">Later</h3>
+                    <span>{laterRecords.length} queued next</span>
+                  </div>
+                  {laterRecords.map((record) => (
+                    <DaybookCard
+                      key={record.id}
+                      record={record}
+                      selected={selectedRecord?.id === record.id}
+                      onSelect={() => setSelectedId(record.id)}
+                      icon={<CheckCircle size={14} />}
+                    />
                   ))}
-                </tbody>
-              </table>
+                </section>
+              )}
             </div>
           ) : (
             <Empty
@@ -681,7 +823,7 @@ export function TodayView() {
               }
               onAction={() =>
                 source.length
-                  ? (setOnlyMine(false), setDueOnly(false))
+                  ? (setAssignee("everyone"), setDueOnly(false))
                   : openCreate(
                       queue === "drafts"
                         ? "draft"
@@ -716,6 +858,7 @@ export function TodayView() {
           </div>
         </section>
         <aside className="today-aside">
+          <RecordContext record={selectedRecord} eyebrow="USEFUL CONTEXT" />
           <section className="project-overview index-section">
             <div className="index-heading">
               <span>PROJECT</span>
@@ -1457,13 +1600,33 @@ function Tabs({
 }
 
 export function PipelineView() {
-  const { openCreate, openRecord, act, toast } = useCRM();
+  const { openCreate, act, toast } = useCRM();
   const records = useRecords("opportunity");
   const [mode, setMode] = useState("board");
+  const [selectedId, setSelectedId] = useState("");
+  const [draggingId, setDraggingId] = useState("");
+  const [dropStage, setDropStage] = useState("");
   const stages = modules.opportunity.statuses;
   const currencies = [
     ...new Set(records.map((r) => text(r, "currency") || "INR")),
   ];
+  const selectedRecord =
+    records.find((record) => record.id === selectedId) || records[0];
+
+  async function moveOpportunity(id: string, stage: string) {
+    const opportunity = records.find((record) => record.id === id);
+    if (!opportunity || statusIs(opportunity, stage)) return;
+    try {
+      await act(
+        "update_record",
+        { status: stage.toLowerCase().replaceAll(" ", "_") },
+        opportunity,
+      );
+      toast(`${opportunity.title} moved to ${stage}.`);
+    } catch (error) {
+      toast((error as Error).message);
+    }
+  }
   return (
     <>
       <PageHead
@@ -1511,91 +1674,122 @@ export function PipelineView() {
       {mode === "list" ? (
         <RecordsView kind="opportunity" hideHead />
       ) : (
-        <div className="pipeline-board">
-          {stages.map((stage, i) => {
-            const stageRecords = records.filter((r) => statusIs(r, stage));
-            return (
-              <section className="pipeline-column" key={stage}>
-                <div className="stage-head">
-                  <span className={`stage-dot stage-${i}`} />
-                  <h2>{stage}</h2>
-                  <span>{stageRecords.length}</span>
-                </div>
-                <div className="stage-cards">
-                  {stageRecords.map((r) => (
-                    <article className="opportunity-card" key={r.id}>
-                      <button
-                        className="opportunity-title"
-                        onClick={() => openRecord(r)}
-                      >
-                        {r.title}
-                        <ArrowUpRight size={15} />
-                      </button>
-                      <span className="numeric opportunity-value">
-                        {money(
-                          Number(r.data.amountCents || 0),
-                          text(r, "currency") || "INR",
-                        )}
-                      </span>
-                      <p>{text(r, "nextAction") || "Add a next action"}</p>
-                      <div className="opportunity-meta">
-                        <Owner id={r.ownerId} record={r} />
-                        <span
-                          className={cn(
-                            r.dueAt &&
-                              new Date(r.dueAt) < new Date() &&
-                              "date-overdue",
-                          )}
-                        >
-                          {dateLabel(r.dueAt)}
-                        </span>
-                      </div>
-                      <label className="move-stage">
-                        Stage
-                        <select
-                          aria-label={`Move ${r.title} to stage`}
-                          value={label(r.status)}
-                          onChange={async (e) => {
-                            try {
-                              await act(
-                                "update_record",
-                                {
-                                  status: e.target.value
-                                    .toLowerCase()
-                                    .replaceAll(" ", "_"),
-                                },
-                                r,
-                              );
-                            } catch (e) {
-                              toast((e as Error).message);
-                            }
-                          }}
-                        >
-                          {stages.map((s) => (
-                            <option key={s}>{s}</option>
-                          ))}
-                        </select>
-                      </label>
-                    </article>
-                  ))}
-                  {!stageRecords.length && (
-                    <button
-                      className="stage-empty"
-                      onClick={() => openCreate("opportunity")}
-                    >
-                      <Plus size={16} />
-                      Add opportunity
-                    </button>
+        <div className="pipeline-workbench">
+          <div
+            className="pipeline-board"
+            aria-label="Opportunity pipeline board"
+          >
+            {stages.map((stage, i) => {
+              const stageRecords = records.filter((r) => statusIs(r, stage));
+              const isDropTarget = dropStage === stage;
+              return (
+                <section
+                  className={cn(
+                    "pipeline-column",
+                    isDropTarget && "pipeline-column-drop-target",
                   )}
-                </div>
-              </section>
-            );
-          })}
+                  key={stage}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setDropStage(stage);
+                  }}
+                  onDragLeave={(event) => {
+                    if (
+                      !event.currentTarget.contains(event.relatedTarget as Node)
+                    )
+                      setDropStage("");
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const id =
+                      event.dataTransfer.getData("text/plain") || draggingId;
+                    setDropStage("");
+                    setDraggingId("");
+                    void moveOpportunity(id, stage);
+                  }}
+                >
+                  <div className="stage-head">
+                    <span className={`stage-dot stage-${i}`} />
+                    <h2>{stage}</h2>
+                    <span>{stageRecords.length}</span>
+                  </div>
+                  <div className="stage-cards">
+                    {stageRecords.map((r) => (
+                      <article
+                        className={cn(
+                          "opportunity-card",
+                          selectedRecord?.id === r.id &&
+                            "opportunity-card-selected",
+                          draggingId === r.id && "opportunity-card-dragging",
+                        )}
+                        draggable
+                        key={r.id}
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData("text/plain", r.id);
+                          event.dataTransfer.effectAllowed = "move";
+                          setDraggingId(r.id);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingId("");
+                          setDropStage("");
+                        }}
+                      >
+                        <button
+                          className="opportunity-title"
+                          aria-pressed={selectedRecord?.id === r.id}
+                          onClick={() => setSelectedId(r.id)}
+                        >
+                          {r.title}
+                          <ArrowUpRight size={15} />
+                        </button>
+                        <span className="numeric opportunity-value">
+                          {money(
+                            Number(r.data.amountCents || 0),
+                            text(r, "currency") || "INR",
+                          )}
+                        </span>
+                        <p>{text(r, "nextAction") || "Add a next action"}</p>
+                        <div className="opportunity-meta">
+                          <Owner id={r.ownerId} record={r} />
+                          <span
+                            className={cn(
+                              r.dueAt &&
+                                new Date(r.dueAt) < new Date() &&
+                                "date-overdue",
+                            )}
+                          >
+                            {dateLabel(r.dueAt)}
+                          </span>
+                        </div>
+                        <QuickRecordControls
+                          record={r}
+                          statuses={stages}
+                          compact
+                        />
+                      </article>
+                    ))}
+                    {!stageRecords.length && (
+                      <button
+                        className="stage-empty"
+                        onClick={() => openCreate("opportunity")}
+                      >
+                        <Plus size={16} />
+                        Add opportunity
+                      </button>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+          <RecordContext record={selectedRecord} eyebrow="PIPELINE CONTEXT" />
         </div>
       )}
       <p className="view-footnote">
         Pipeline values are potential amounts, separated by currency. They do
-        not represent collected revenue.
+        not represent collected revenue. Drag a card between stages, or use its
+        stage control when you prefer the keyboard.
       </p>
     </>
   );

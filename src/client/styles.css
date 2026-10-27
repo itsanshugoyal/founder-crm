@@ -4036,6 +4036,423 @@ tbody tr:hover {
     padding: 23px;
   }
 }
+
+/* Daybook and opportunity workbench: a quieter, record-first operating surface. */
+.today-page-head.daily-brief {
+  grid-template-columns: minmax(0, 1fr) 228px;
+  min-height: 170px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  background: #252932;
+}
+.daily-brief .brief-main {
+  padding: 23px 30px;
+}
+.daily-brief .date-index {
+  align-self: stretch;
+  justify-content: center;
+  border-color: #505764;
+  color: #c5cbd2;
+}
+.daily-brief .date-index strong,
+.daily-brief .today-heading-copy h1 {
+  color: #fffdf8;
+}
+.daily-brief .today-heading-copy .eyebrow {
+  color: #f6a47c;
+}
+.daily-brief .today-heading-copy p {
+  color: #d0d5dc;
+}
+.daily-brief .head-actions .btn-default {
+  color: #fffdf8;
+  border-color: #66707d;
+  background: transparent;
+}
+.daily-brief .head-actions .btn-default:hover {
+  background: #343a45;
+}
+.daily-brief .head-actions .btn-primary {
+  color: #2b2b2b;
+  border-color: #f09b73;
+  background: #f5a27a;
+}
+.daily-brief .head-actions .btn-primary:hover {
+  border-color: #ffb18d;
+  background: #ffb18d;
+}
+.daily-brief .brief-focus {
+  justify-content: center;
+  gap: 2px;
+  padding: 23px 26px;
+  border-left-color: #505764;
+  background: #1f232b;
+}
+.daily-brief .brief-focus .eyebrow {
+  color: #f6a47c;
+}
+.brief-focus-count {
+  margin-top: 7px;
+  color: #fffdf8;
+  font:
+    700 43px/1 "Geist",
+    sans-serif;
+  letter-spacing: -2px;
+}
+.brief-focus-label {
+  color: #fffdf8;
+  font-size: 12px;
+  font-weight: 650;
+}
+.brief-focus-note {
+  margin-top: 12px;
+  color: #aeb8c4;
+  font:
+    10px/1.45 "Geist Mono",
+    monospace;
+  text-transform: capitalize;
+}
+.today-columns {
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 340px);
+  gap: 24px;
+}
+.today-aside {
+  gap: 20px;
+}
+.daybook-owner-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.daybook-owner-filter > span {
+  margin-right: 4px;
+  color: #7a827b;
+  font-size: 11px;
+}
+.daybook-owner-filter > button {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #69736b;
+  font-size: 11px;
+}
+.daybook-owner-filter > button:hover {
+  background: #f2f0eb;
+}
+.daybook-owner-filter > button.selected {
+  border-color: #ded8cf;
+  color: #363b3e;
+  background: #fff;
+  box-shadow: 0 1px 2px #1e293508;
+}
+.daybook-list {
+  background: #fff;
+}
+.daybook-section + .daybook-section {
+  border-top: 10px solid #f2f4f5;
+}
+.daybook-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-bottom: 1px solid #e5e6e4;
+}
+.daybook-section-head h3 {
+  flex: 1;
+  color: #252932;
+  font:
+    650 15px "Geist",
+    sans-serif;
+  letter-spacing: -0.25px;
+}
+.daybook-section-head > span:last-child {
+  color: #7a827b;
+  font:
+    10px "Geist Mono",
+    monospace;
+}
+.daybook-section-dot {
+  width: 7px;
+  height: 7px;
+  background: #c5613c;
+}
+.daybook-section-later .daybook-section-dot {
+  background: #a9b0b8;
+}
+.daybook-card {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 88px;
+  margin: 0 12px;
+  padding: 12px 9px;
+  border-bottom: 1px solid #e9e9e7;
+}
+.daybook-card:last-child {
+  border-bottom: 0;
+}
+.daybook-card-selected {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding-left: 12px;
+  border: 1px solid #f0d4c7;
+  border-left: 3px solid #c5613c;
+  border-radius: 8px;
+  background: #fff4ee;
+}
+.daybook-time {
+  color: #6f7773;
+  font:
+    10px/1.35 "Geist Mono",
+    monospace;
+  text-align: right;
+}
+.daybook-card-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  text-align: left;
+}
+.daybook-card-main:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.daybook-card-main:focus-visible {
+  outline-offset: 4px;
+}
+.daybook-record-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #a65435;
+  font:
+    10px "Geist Mono",
+    monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.daybook-card-main strong {
+  overflow-wrap: anywhere;
+  color: #242930;
+  font-size: 14px;
+  font-weight: 650;
+}
+.daybook-record-meta {
+  overflow: hidden;
+  max-width: 100%;
+  color: #768078;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.daybook-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.record-context {
+  position: sticky;
+  top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid #39404c;
+  border-radius: 10px;
+  color: #fffdf8;
+  background: #343946;
+  box-shadow: 0 12px 30px #20273313;
+}
+.record-context-empty {
+  background: #343946;
+}
+.record-context-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.record-context .eyebrow,
+.record-context .context-section > span {
+  color: #f6a47c;
+}
+.context-mark {
+  width: 11px;
+  height: 11px;
+  transform: rotate(45deg);
+  background: #f5a27a;
+}
+.record-context-person {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-top: 4px;
+}
+.record-context-person .avatar {
+  background: #e9edf3;
+  color: #303745;
+}
+.record-context-person strong,
+.record-context-person span {
+  display: block;
+}
+.record-context-person strong {
+  font-size: 12px;
+}
+.record-context-person span {
+  margin-top: 2px;
+  color: #c2cad4;
+  font-size: 11px;
+}
+.record-context h2 {
+  color: #fffdf8;
+  font:
+    650 24px/1.15 "Geist",
+    sans-serif;
+  letter-spacing: -0.85px;
+  overflow-wrap: anywhere;
+}
+.record-context-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: #c2cad4;
+  font-size: 11px;
+}
+.record-context .owner-cell {
+  color: #d9e0e7;
+}
+.record-context .quick-record-controls select {
+  border-color: #616b78;
+  color: #f6f7f8;
+  background: #2a2f39;
+}
+.record-context .quick-record-controls select:hover:not(:disabled) {
+  background: #222730;
+}
+.context-section {
+  padding-top: 13px;
+  border-top: 1px solid #515a67;
+}
+.context-section > span {
+  font:
+    10px "Geist Mono",
+    monospace;
+  letter-spacing: 0.05em;
+}
+.context-section p {
+  margin-top: 7px;
+  color: #d5dbe3;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.record-context .btn-primary {
+  width: 100%;
+  margin-top: 2px;
+  color: #2d2d2d;
+  border-color: #f5a27a;
+  background: #f5a27a;
+}
+.record-context .btn-primary:hover {
+  border-color: #ffb18d;
+  background: #ffb18d;
+}
+.pipeline-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(275px, 320px);
+  align-items: start;
+  gap: 20px;
+}
+.pipeline-workbench .pipeline-board {
+  min-width: 0;
+}
+.pipeline-column {
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+.pipeline-column-drop-target {
+  border-color: #c5613c;
+  background: #fff1e9;
+}
+.opportunity-card {
+  cursor: grab;
+}
+.opportunity-card:active {
+  cursor: grabbing;
+}
+.opportunity-card-selected {
+  border-color: #c5613c;
+  box-shadow: inset 3px 0 #c5613c;
+}
+.opportunity-card-dragging {
+  opacity: 0.48;
+}
+.opportunity-card .quick-record-controls {
+  margin-top: 11px;
+}
+
+@media (max-width: 1150px) {
+  .today-columns,
+  .pipeline-workbench {
+    grid-template-columns: 1fr;
+  }
+  .record-context {
+    position: static;
+  }
+  .today-aside {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 1fr);
+  }
+  .today-aside .record-context {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 760px) {
+  .today-page-head.daily-brief {
+    grid-template-columns: 1fr;
+    border-radius: 12px 12px 0 0;
+  }
+  .daily-brief .brief-main {
+    padding: 20px;
+  }
+  .daily-brief .brief-focus {
+    min-height: 100px;
+    border-top: 1px solid #505764;
+    border-left: 0;
+  }
+  .today-aside {
+    display: flex;
+  }
+  .queue-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .daybook-card {
+    grid-template-columns: 55px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .daybook-card-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+  .daybook-time {
+    text-align: left;
+  }
+  .record-context {
+    padding: 18px;
+  }
+}
 @media (max-width: 760px) {
   .work-navigation {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4053,6 +4470,294 @@ tbody tr:hover {
   }
   .work-navigation > button:nth-child(n + 7) {
     border-bottom: 0;
+  }
+}
+
+/* The Daybook system: screenshot-inspired, adapted for fast founder operations. */
+:root {
+  --ink: #252932;
+  --text: #31353d;
+  --muted: #69717c;
+  --line: #e0e3e7;
+  --surface: #ffffff;
+  --canvas: #f3f4f6;
+  --accent: #ef9b76;
+  --accent-ink: #99472f;
+  --accent-soft: #fff0e9;
+}
+body {
+  background: var(--canvas);
+}
+.sidebar {
+  color: #4e5661;
+  background: #fff;
+  border-right-color: #e0e3e7;
+}
+.sidebar .brand,
+.sidebar .brand-wordmark {
+  color: #252932;
+}
+.sidebar .brand-mark {
+  color: #252932;
+}
+.sidebar .brand-mark svg path:nth-child(2),
+.sidebar .brand-mark svg path:last-child {
+  fill: #fff;
+}
+.sidebar .brand-product {
+  color: #8a939f;
+}
+.project-picker {
+  border-color: #e0e3e7;
+  background: #fff;
+}
+.project-picker label,
+.project-picker select {
+  color: #343a44;
+  background: #fff;
+}
+.project-picker .project-new {
+  border-left-color: #e0e3e7;
+  color: #68717d;
+}
+.project-picker .project-new:hover,
+.sidebar-search:hover,
+.nav-item:hover,
+.nav-group-toggle:hover,
+.add-project:hover {
+  color: #252932;
+  background: #f4f5f7;
+}
+.sidebar-search,
+.nav-item {
+  color: #59616d;
+}
+.sidebar kbd {
+  color: #7a838e;
+  border-color: #e0e3e7;
+  background: #f8f8f9;
+}
+.nav-label,
+.runtime-status {
+  color: #8a939f;
+}
+.nav-group {
+  border-top-color: #e7e9ec;
+}
+.nav-group-toggle {
+  color: #64707b;
+}
+.nav-active,
+.nav-active:hover {
+  color: #fff;
+  background: #252932;
+  box-shadow: inset 3px 0 #ef9b76;
+}
+.nav-count {
+  color: #69717c;
+  background: #eef0f2;
+}
+.nav-active .nav-count {
+  color: #fff5f0;
+  background: #4b515d;
+}
+.add-project {
+  color: #59616d;
+}
+.profile {
+  border-top-color: #e5e7ea;
+}
+.sidebar .profile .avatar {
+  color: #4f5864;
+  border-color: #e0e3e7;
+  background: #f2f4f6;
+}
+.profile strong {
+  color: #303640;
+}
+.profile > div > span {
+  color: #7c8692;
+}
+.main-shell {
+  background: var(--canvas);
+}
+.topbar {
+  border-bottom-color: #e0e3e7;
+  background: #fff;
+}
+.breadcrumb,
+.topbar-search {
+  color: #626b76;
+}
+.breadcrumb strong {
+  color: #252932;
+}
+.topbar-search {
+  border-color: #e0e3e7;
+  background: #fbfbfc;
+}
+.page-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 166px;
+  margin-bottom: 24px;
+  padding: 27px 30px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: #252932;
+}
+.page-head-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+}
+.page-head .eyebrow {
+  margin-bottom: 7px;
+  color: #f3a078;
+}
+.page-head h1 {
+  color: #fffdf9;
+  font-size: clamp(32px, 3vw, 43px);
+}
+.page-head p {
+  max-width: 630px;
+  margin-top: 7px;
+  color: #c9d0d8;
+  font-size: 14px;
+}
+.page-head .head-actions {
+  position: relative;
+  z-index: 1;
+}
+.page-head .btn-default {
+  color: #fffdf9;
+  border-color: #606976;
+  background: transparent;
+}
+.page-head .btn-default:hover {
+  background: #343a45;
+}
+.page-head .btn-primary {
+  color: #2b2b2d;
+  border-color: #ef9b76;
+  background: #ef9b76;
+}
+.page-head .btn-primary:hover {
+  border-color: #ffb18d;
+  background: #ffb18d;
+}
+.page-head-mark {
+  position: absolute;
+  right: 22px;
+  bottom: -37px;
+  width: 138px;
+  height: 138px;
+  transform: rotate(45deg);
+  border: 1px solid #56606e;
+  background: #2d323d;
+}
+.panel,
+.table-panel {
+  border-color: #e0e3e7;
+  border-top-color: #252932;
+  border-radius: 10px;
+  box-shadow: 0 8px 22px #20273308;
+}
+.records-toolbar {
+  border-color: #e0e3e7;
+}
+.view-pill-active {
+  color: #843d28;
+  border-color: #f0c2ae;
+  background: #fff0e9;
+}
+.tabs {
+  border-bottom-color: #dfe2e6;
+}
+.tabs > button.tab-active {
+  color: #8e432c;
+  border-bottom-color: #ef9b76;
+}
+.relationship-brief,
+.library-brief,
+.money-summary,
+.report-metrics,
+.runtime-banner {
+  border-color: #e0e3e7;
+  border-top-color: #252932;
+  background: #fff;
+  box-shadow: 0 8px 22px #20273308;
+}
+.relationship-brief,
+.library-brief {
+  border-left-color: #ef9b76;
+}
+.work-focus {
+  border-top-color: #ef9b76;
+  border-radius: 12px;
+  background: #252932;
+  box-shadow: 0 10px 24px #20273313;
+}
+.work-focus .eyebrow,
+.work-focus-index svg {
+  color: #f3a078;
+}
+.runtime-banner {
+  border-left-color: #ef9b76;
+  border-radius: 10px;
+}
+.runtime-icon {
+  color: #99472f;
+  border-color: #f1cab8;
+  background: #fff0e9;
+}
+.money-summary > div,
+.report-metrics > div,
+.relationship-brief dl,
+.relationship-brief dl > div,
+.library-count {
+  border-color: #e4e6e9;
+}
+.money-summary strong,
+.report-metrics strong,
+.relationship-brief dd,
+.library-count strong {
+  color: #252932;
+}
+.stage-dot {
+  background: #a6adb7;
+}
+.stage-4,
+.stage-5 {
+  background: #ef9b76;
+}
+.opportunity-card-selected {
+  border-color: #ef9b76;
+  box-shadow: inset 3px 0 #ef9b76;
+}
+.pipeline-column-drop-target {
+  border-color: #ef9b76;
+  background: #fff0e9;
+}
+
+@media (max-width: 760px) {
+  .page-head {
+    grid-template-columns: 1fr;
+    min-height: 146px;
+    padding: 22px;
+  }
+  .page-head .head-actions {
+    justify-self: start;
+    margin-top: 16px;
+  }
+  .page-head-mark {
+    width: 90px;
+    height: 90px;
+    right: -34px;
+    bottom: -39px;
   }
 }
 @media (max-width: 390px) {
@@ -5463,5 +6168,315 @@ tbody tr:hover {
   .draft-step-heading p,
   .draft-contact-head > div > p:not(.eyebrow) {
     display: none;
+  }
+}
+
+/* Keep the screenshot-derived shell last: legacy responsive rules above must not
+   pull the working surface back to the earlier dark-rail theme. */
+:root {
+  --ink: #252932;
+  --text: #31353d;
+  --muted: #69717c;
+  --line: #e0e3e7;
+  --surface: #ffffff;
+  --canvas: #f3f4f6;
+  --accent: #ef9b76;
+  --accent-ink: #99472f;
+  --accent-soft: #fff0e9;
+}
+.sidebar {
+  color: #4e5661;
+  background: #fff;
+  border-right-color: #e0e3e7;
+}
+.sidebar .brand,
+.sidebar .brand-wordmark {
+  color: #252932;
+}
+.sidebar .brand-mark {
+  color: #252932;
+}
+.sidebar .brand-mark svg path:nth-child(2),
+.sidebar .brand-mark svg path:last-child {
+  fill: #fff;
+}
+.sidebar .brand-product,
+.nav-label,
+.runtime-status {
+  color: #8a939f;
+}
+.project-picker {
+  border-color: #e0e3e7;
+  background: #fff;
+}
+.project-picker label,
+.project-picker select {
+  color: #343a44;
+  background: #fff;
+}
+.project-picker .project-new {
+  color: #68717d;
+  border-left-color: #e0e3e7;
+}
+.sidebar-search,
+.nav-item {
+  color: #59616d;
+}
+.sidebar-search:hover,
+.nav-item:hover,
+.nav-group-toggle:hover,
+.add-project:hover {
+  color: #252932;
+  background: #f4f5f7;
+}
+.sidebar kbd {
+  color: #7a838e;
+  border-color: #e0e3e7;
+  background: #f8f8f9;
+}
+.nav-group {
+  border-top-color: #e7e9ec;
+}
+.nav-group-toggle,
+.add-project {
+  color: #64707b;
+}
+.nav-active,
+.nav-active:hover {
+  color: #fff;
+  background: #252932;
+  box-shadow: inset 3px 0 #ef9b76;
+}
+.nav-count {
+  color: #69717c;
+  background: #eef0f2;
+}
+.nav-active .nav-count {
+  color: #fff5f0;
+  background: #4b515d;
+}
+.profile {
+  border-top-color: #e5e7ea;
+}
+.sidebar .profile .avatar {
+  color: #4f5864;
+  border-color: #e0e3e7;
+  background: #f2f4f6;
+}
+.profile strong {
+  color: #303640;
+}
+.profile > div > span {
+  color: #7c8692;
+}
+.main-shell {
+  background: var(--canvas);
+}
+.topbar {
+  border-bottom-color: #e0e3e7;
+  background: #fff;
+}
+.breadcrumb,
+.topbar-search {
+  color: #626b76;
+}
+.breadcrumb strong {
+  color: #252932;
+}
+.topbar-search {
+  border-color: #e0e3e7;
+  background: #fbfbfc;
+}
+.page-head {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 166px;
+  margin-bottom: 24px;
+  padding: 27px 30px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: #252932;
+}
+.page-head-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+}
+.page-head .eyebrow {
+  margin-bottom: 7px;
+  color: #f3a078;
+}
+.page-head h1 {
+  color: #fffdf9;
+  font-size: clamp(32px, 3vw, 43px);
+}
+.page-head p {
+  max-width: 630px;
+  margin-top: 7px;
+  color: #c9d0d8;
+  font-size: 14px;
+}
+.page-head .head-actions {
+  position: relative;
+  z-index: 1;
+}
+.page-head .btn-default {
+  color: #fffdf9;
+  border-color: #606976;
+  background: transparent;
+}
+.page-head .btn-default:hover {
+  background: #343a45;
+}
+.page-head .btn-primary {
+  color: #2b2b2d;
+  border-color: #ef9b76;
+  background: #ef9b76;
+}
+.page-head .btn-primary:hover {
+  border-color: #ffb18d;
+  background: #ffb18d;
+}
+.page-head-mark {
+  position: absolute;
+  right: 22px;
+  bottom: -37px;
+  width: 138px;
+  height: 138px;
+  transform: rotate(45deg);
+  border: 1px solid #56606e;
+  background: #2d323d;
+}
+.panel,
+.table-panel {
+  border-color: #e0e3e7;
+  border-top-color: #252932;
+  border-radius: 10px;
+  box-shadow: 0 8px 22px #20273308;
+}
+.records-toolbar {
+  border-color: #e0e3e7;
+}
+.view-pill-active {
+  color: #843d28;
+  border-color: #f0c2ae;
+  background: #fff0e9;
+}
+.tabs {
+  border-bottom-color: #dfe2e6;
+}
+.tabs > button.tab-active {
+  color: #8e432c;
+  border-bottom-color: #ef9b76;
+}
+.relationship-brief,
+.library-brief,
+.money-summary,
+.report-metrics,
+.runtime-banner {
+  border-color: #e0e3e7;
+  border-top-color: #252932;
+  background: #fff;
+  box-shadow: 0 8px 22px #20273308;
+}
+.relationship-brief,
+.library-brief {
+  border-left-color: #ef9b76;
+}
+.work-focus {
+  border-top-color: #ef9b76;
+  border-radius: 12px;
+  background: #252932;
+  box-shadow: 0 10px 24px #20273313;
+}
+.work-focus .eyebrow,
+.work-focus-index svg {
+  color: #f3a078;
+}
+.runtime-banner {
+  border-left-color: #ef9b76;
+  border-radius: 10px;
+}
+.runtime-icon {
+  color: #99472f;
+  border-color: #f1cab8;
+  background: #fff0e9;
+}
+.money-summary > div,
+.report-metrics > div,
+.relationship-brief dl,
+.relationship-brief dl > div,
+.library-count {
+  border-color: #e4e6e9;
+}
+.money-summary strong,
+.report-metrics strong,
+.relationship-brief dd,
+.library-count strong {
+  color: #252932;
+}
+.stage-dot {
+  background: #a6adb7;
+}
+.stage-4,
+.stage-5 {
+  background: #ef9b76;
+}
+.opportunity-card-selected {
+  border-color: #ef9b76;
+  box-shadow: inset 3px 0 #ef9b76;
+}
+.pipeline-column-drop-target {
+  border-color: #ef9b76;
+  background: #fff0e9;
+}
+.work-focus {
+  color: #252932;
+  border: 1px solid #e0e3e7;
+  border-left: 4px solid #ef9b76;
+  background: #fff;
+  box-shadow: 0 8px 22px #20273308;
+}
+.work-focus-index {
+  color: #7b8490;
+  border-right-color: #e6e8eb;
+}
+.work-focus .eyebrow,
+.work-focus-index svg {
+  color: #a65337;
+}
+.work-focus h2 {
+  color: #252932;
+}
+.work-focus p {
+  color: #69717c;
+}
+.work-focus .btn-primary {
+  color: #2b2b2d;
+  border-color: #ef9b76;
+  background: #ef9b76;
+}
+.work-focus .btn-primary:hover {
+  border-color: #ffb18d;
+  background: #ffb18d;
+}
+@media (max-width: 760px) {
+  .page-head {
+    grid-template-columns: 1fr;
+    min-height: 146px;
+    padding: 22px;
+  }
+  .page-head .head-actions {
+    justify-self: start;
+    margin-top: 16px;
+  }
+  .page-head-mark {
+    width: 90px;
+    height: 90px;
+    right: -34px;
+    bottom: -39px;
   }
 }
