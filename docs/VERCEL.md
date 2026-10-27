@@ -12,6 +12,8 @@ The production URL remains **https://founder-crm-rouge.vercel.app**. Auth redire
 
 The transfer removed the Git repository link. Reconnecting `itsanshugoyal/founder-crm` was rejected because the new Vercel account needs a GitHub Login Connection. A fresh manual production deployment (`dpl_6q4suS7DX6Xxmy5Hrguz5wqs1473`, source `dee0a7c`) was also **BLOCKED**, with Vercel reporting that the commit author lacks team deployment permission (`TEAM_ACCESS_REQUIRED`). The transferred existing release remains live at the canonical URL. Do not claim a new build succeeded or that Git pushes trigger deployments. The owner must connect the correct personal GitHub identity and reconnect the repository, then retry and verify a new deployment. Do not rewrite authors or strip Git attribution to evade the check.
 
+On 27 October 2026, a new manual production deployment for commit `23014b1` succeeded: `dpl_7iFQjtcYLXWkWMu82nkCytzPX2bh`. Its production candidate is `founder-7y3rlol3f-delta-7460.vercel.app` and the canonical `founder-crm-rouge.vercel.app` alias now points to it. Live checks returned: root 200, health 200 with configured database/auth, anonymous session 200 with no workspace, and anonymous workspace 401. Git remains disconnected, so this success does **not** restore automatic deployment on pushes.
+
 The local project link now targets Delta. Its separate CLI login is stored only in the ignored `.local/vercel-deltaodcom` directory; commands for this project need both `--scope delta-7460` and `--global-config C:/code/founder-crm/.local/vercel-deltaodcom`. Do not print credential files or pass their contents as command arguments. Personal Git authors remain `itsanshugoyal`.
 
 ### Earlier setup (historical)
