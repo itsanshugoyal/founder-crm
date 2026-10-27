@@ -1,5 +1,9 @@
 # Founder CRM interface
 
+The current screenshot-based Daybook redesign and page-specific requirements
+are specified in [DAYBOOK-DESIGN.md](docs/DAYBOOK-DESIGN.md). That document
+supersedes older visual and Today-view descriptions below where they differ.
+
 ## Product direction
 
 The interface is a contemporary founder workspace. Near-white working surfaces, charcoal navigation and a restrained citron action accent replace the rejected pine/ivory/copper ledger. Strong Geist typography, an asymmetric daily brief and one actual next record give the home screen identity without invented metrics. The product name remains Founder CRM; the selected project and current section stay visible. The considered alternatives, user journeys, assumptions and acceptance criteria are recorded in [UI-REDESIGN.md](docs/UI-REDESIGN.md).

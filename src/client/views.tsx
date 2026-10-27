@@ -338,7 +338,10 @@ function RecordContext({
       aria-label={`Context for ${record.title}`}
     >
       <div className="record-context-top">
-        <span className="eyebrow">{eyebrow}</span>
+        <div>
+          <strong>The useful context</strong>
+          <span>{eyebrow}</span>
+        </div>
         <span className="context-mark" aria-hidden="true" />
       </div>
       <div className="record-context-person">
@@ -400,11 +403,19 @@ function DaybookCard({
   const linkedPerson = record.contactId
     ? records.find((candidate) => candidate.id === record.contactId)
     : undefined;
-  const timing = record.dueAt
-    ? dateLabel(record.dueAt)
-    : record.kind === "meeting" && text(record, "startsAt")
-      ? dateLabel(text(record, "startsAt"))
-      : "Anytime";
+  const timestamp =
+    (record.kind === "meeting" && text(record, "startsAt")) || record.dueAt;
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const timing =
+    timestamp && new Date(timestamp) < dayStart
+      ? `Overdue · ${dateLabel(timestamp)}`
+      : record.kind === "meeting" && timestamp
+        ? new Date(timestamp).toLocaleTimeString(undefined, {
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        : "Anytime";
   return (
     <article
       className={cn("daybook-card", selected && "daybook-card-selected")}
@@ -420,19 +431,15 @@ function DaybookCard({
           {modules[record.kind].singular}
         </span>
         <strong>{record.title}</strong>
-        <span className="daybook-record-meta">
-          {linkedPerson?.title ||
-            text(record, "company") ||
-            label(record.status)}
-        </span>
+        {(linkedPerson?.title || text(record, "company")) && (
+          <span className="daybook-record-meta">
+            {linkedPerson?.title || text(record, "company")}
+          </span>
+        )}
       </button>
       <div className="daybook-card-actions">
         <Owner id={record.ownerId} record={record} />
-        <QuickRecordControls
-          record={record}
-          statuses={modules[record.kind].statuses}
-          compact
-        />
+        <span>{label(record.status)}</span>
       </div>
     </article>
   );
@@ -469,79 +476,28 @@ function MiniList({ records, empty }: { records: CrmRecord[]; empty: string }) {
 }
 
 export function TodayView() {
-  const { workspace, projectId, openCreate, setPage, openRecord } = useCRM();
+  const { workspace, projectId, setPage } = useCRM();
   const records = useRecords();
-  const [queue, setQueue] = useState("tasks");
   const [assignee, setAssignee] = useState("everyone");
-  const [dueOnly, setDueOnly] = useState(false);
   const [selectedId, setSelectedId] = useState("");
-  const endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-  const tasks = records.filter(
-    (r) => ["task", "promise", "onboarding"].includes(r.kind) && !isComplete(r),
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const dayAfterTomorrow = new Date(tomorrowStart);
+  dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+  const members = workspace.members.filter((member) =>
+    member.projectIds.includes(projectId),
   );
-  const due = tasks.filter((r) => r.dueAt && new Date(r.dueAt) <= endOfDay);
-  const replies = records.filter(
-    (r) => r.kind === "conversation" && statusIs(r, "Open", "Needs action"),
-  );
-  const drafts = records.filter(
-    (r) => r.kind === "draft" && statusIs(r, "Draft", "Needs review"),
-  );
-  const opportunities = records.filter(
-    (r) => r.kind === "opportunity" && !statusIs(r, "Lost", "Paying"),
-  );
-  const meetings = records
-    .filter((r) => r.kind === "meeting" && !isComplete(r))
-    .sort((a, b) =>
-      (text(a, "startsAt") || a.dueAt || "").localeCompare(
-        text(b, "startsAt") || b.dueAt || "",
-      ),
-    );
-  const focusRecord =
-    due
-      .slice()
-      .sort((a, b) => (a.dueAt || "").localeCompare(b.dueAt || ""))[0] ||
-    replies[0] ||
-    drafts[0] ||
-    tasks[0] ||
-    meetings[0];
-  const focusType = due.length
-    ? "EARLIEST DUE WORK"
-    : replies.length
-      ? "NEEDS A REPLY"
-      : drafts.length
-        ? "DRAFT TO INSPECT"
-        : tasks.length
-          ? "OPEN WORK"
-          : "UPCOMING MEETING";
-  const queues = [
-    { id: "tasks", name: "Open work", count: tasks.length, icon: CheckCircle },
-    { id: "replies", name: "Needs a reply", count: replies.length, icon: Tray },
-    {
-      id: "drafts",
-      name: "Draft review",
-      count: drafts.length,
-      icon: NotePencil,
-    },
-    {
-      id: "meetings",
-      name: "Meetings",
-      count: meetings.length,
-      icon: CalendarBlank,
-    },
-  ];
-  const source =
-    queue === "replies"
-      ? replies
-      : queue === "drafts"
-        ? drafts
-        : queue === "meetings"
-          ? meetings
-          : tasks;
-  const founders = workspace.members.filter((member) =>
+  const founders = members.filter((member) =>
     /anshu|nahush/i.test(member.name),
   );
-  const recordMatchesAssignee = (record: CrmRecord) => {
+  const when = (record: CrmRecord) =>
+    (record.kind === "meeting" && text(record, "startsAt")) ||
+    record.dueAt ||
+    "";
+  const matchesOwner = (record: CrmRecord) => {
     const collaborators = Array.isArray(record.data.collaboratorIds)
       ? record.data.collaboratorIds.filter(
           (id): id is string => typeof id === "string",
@@ -558,403 +514,162 @@ export function TodayView() {
       );
     return record.ownerId === assignee || collaborators.includes(assignee);
   };
-  const shown = source
-    .filter(
-      (r) =>
-        recordMatchesAssignee(r) &&
-        (!dueOnly || (r.dueAt && new Date(r.dueAt) <= endOfDay)),
-    )
-    .sort((a, b) => (a.dueAt || "9999").localeCompare(b.dueAt || "9999"));
-  const selectedRecord =
-    shown.find((record) => record.id === selectedId) || shown[0] || focusRecord;
-  const todayRecords = shown.filter(
-    (record) => !record.dueAt || new Date(record.dueAt) <= endOfDay,
+  const relevant = records
+    .filter((record) => {
+      if (["task", "promise", "onboarding", "meeting"].includes(record.kind))
+        return !isComplete(record);
+      if (record.kind === "draft")
+        return statusIs(record, "Draft", "Needs review");
+      if (record.kind === "conversation")
+        return statusIs(record, "Open", "Needs action");
+      return false;
+    })
+    .filter((record) => {
+      const date = when(record);
+      return (
+        date &&
+        !Number.isNaN(Date.parse(date)) &&
+        new Date(date) < dayAfterTomorrow &&
+        matchesOwner(record)
+      );
+    })
+    .sort((a, b) => when(a).localeCompare(when(b)));
+  const today = relevant.filter(
+    (record) => new Date(when(record)) < tomorrowStart,
   );
-  const laterRecords = shown.filter(
-    (record) => record.dueAt && new Date(record.dueAt) > endOfDay,
+  const tomorrow = relevant.filter(
+    (record) => new Date(when(record)) >= tomorrowStart,
   );
-  const project = workspace.projects.find((p) => p.id === projectId);
+  const selected =
+    relevant.find((record) => record.id === selectedId) ||
+    today[0] ||
+    tomorrow[0];
+  const longDate = (date: Date) =>
+    date.toLocaleDateString(undefined, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  const iconFor = (record: CrmRecord) =>
+    record.kind === "draft" ? (
+      <NotePencil size={14} />
+    ) : record.kind === "meeting" ? (
+      <CalendarBlank size={14} />
+    ) : record.kind === "conversation" ? (
+      <Tray size={14} />
+    ) : (
+      <CheckCircle size={14} />
+    );
+  const renderSection = (title: string, date: Date, items: CrmRecord[]) => (
+    <section
+      className={cn(
+        "daybook-section",
+        title === "Tomorrow" && "daybook-section-later",
+      )}
+      aria-label={title}
+    >
+      <div className="daybook-section-head">
+        <span className="daybook-section-dot" />
+        <h2>{title}</h2>
+        <span>{longDate(date)}</span>
+      </div>
+      {items.length ? (
+        items.map((record) => (
+          <DaybookCard
+            key={record.id}
+            record={record}
+            icon={iconFor(record)}
+            selected={selected?.id === record.id}
+            onSelect={() => setSelectedId(record.id)}
+          />
+        ))
+      ) : (
+        <p className="daybook-empty">
+          Nothing scheduled {title.toLowerCase()}.
+        </p>
+      )}
+    </section>
+  );
   return (
-    <>
+    <div className="daybook-home">
       <header className="today-page-head daily-brief">
         <div className="brief-main">
           <div className="date-index">
             <span>
-              {new Date()
-                .toLocaleDateString(undefined, { month: "short" })
+              {now
+                .toLocaleDateString(undefined, { month: "long" })
                 .toUpperCase()}
             </span>
-            <strong>{new Date().getDate().toString().padStart(2, "0")}</strong>
+            <strong>{now.getDate()}</strong>
             <span>
-              {new Date()
-                .toLocaleDateString(undefined, { weekday: "short" })
-                .toUpperCase()}
+              {now.toLocaleDateString(undefined, {
+                weekday: "long",
+                year: "numeric",
+              })}
             </span>
           </div>
           <div className="today-heading-copy">
-            <span className="eyebrow">
-              {project?.name || "Current project"} / YOUR DAYBOOK
-            </span>
+            <span className="eyebrow">YOUR DAYBOOK</span>
             <h1>Today, in order.</h1>
-            <p>
-              {due.length > 0
-                ? `${due.length} ${due.length === 1 ? "commitment needs" : "commitments need"} attention by today.`
-                : "Keep the promises. Leave room to think."}
-            </p>
-            <div className="head-actions">
-              <Button onClick={() => openCreate("contact")}>
-                <Users size={16} />
-                Add person
-              </Button>
-              <Button tone="primary" onClick={() => openCreate("task")}>
-                <Plus size={16} />
-                New task
-              </Button>
-            </div>
+            <p>Keep the promises. Leave room to think.</p>
           </div>
-        </div>
-        <div className="brief-focus" aria-label="Today overview">
-          <span className="eyebrow">TODAY’S LOAD</span>
-          <strong className="brief-focus-count">{shown.length}</strong>
-          <span className="brief-focus-label">
-            {shown.length === 1 ? "reviewable record" : "reviewable records"}
-          </span>
-          <span className="brief-focus-note">
-            {focusRecord
-              ? `${focusType.toLowerCase()} selected below`
-              : "Nothing needs review right now"}
-          </span>
         </div>
       </header>
-      <div className="attention-strip">
-        <button
-          onClick={() => {
-            setQueue("tasks");
-            setDueOnly(true);
-          }}
+      <div className="daybook-filter-bar">
+        <div
+          className="daybook-owner-filter"
+          role="group"
+          aria-label="Show work for"
         >
-          <Clock size={16} />
-          <strong>{due.length}</strong> commitments due by today
-          <ArrowRight size={14} />
-        </button>
-        <button
-          onClick={() => {
-            setQueue("replies");
-            setDueOnly(false);
-          }}
-        >
-          <Tray size={16} />
-          <strong>{replies.length}</strong> need a reply
-          <ArrowRight size={14} />
-        </button>
-        <button
-          onClick={() => {
-            setQueue("drafts");
-            setDueOnly(false);
-          }}
-        >
-          <NotePencil size={16} />
-          <strong>{drafts.length}</strong> drafts to review
-          <ArrowRight size={14} />
-        </button>
-        <button onClick={() => setPage("pipeline")}>
-          <Kanban size={16} />
-          <strong>{opportunities.length}</strong> open opportunities
-          <ArrowRight size={14} />
-        </button>
+          <span>Show work for</span>
+          <button
+            className={cn(assignee === "everyone" && "selected")}
+            aria-pressed={assignee === "everyone"}
+            onClick={() => setAssignee("everyone")}
+          >
+            Everyone
+          </button>
+          {members.map((member) => (
+            <button
+              key={member.id}
+              className={cn(assignee === member.id && "selected")}
+              aria-pressed={assignee === member.id}
+              onClick={() => setAssignee(member.id)}
+            >
+              {member.name}
+            </button>
+          ))}
+          {founders.length >= 2 && (
+            <button
+              className={cn(assignee === "__both" && "selected")}
+              aria-pressed={assignee === "__both"}
+              onClick={() => setAssignee("__both")}
+            >
+              Both
+            </button>
+          )}
+        </div>
+        <span className="daybook-total">
+          {relevant.length}{" "}
+          {relevant.length === 1 ? "commitment" : "commitments"}
+        </span>
       </div>
       <div className="today-columns">
-        <section className="panel today-queue">
-          <div className="queue-intro">
-            <span className="eyebrow">THE REVIEW DESK</span>
-            <h2>What needs a decision?</h2>
-            <p>Open a record to review its context and next action.</p>
-          </div>
-          <div className="queue-tabs" role="group" aria-label="Today queues">
-            {queues.map((item) => (
-              <button
-                key={item.id}
-                className={cn(queue === item.id && "queue-active")}
-                aria-pressed={queue === item.id}
-                onClick={() => {
-                  setQueue(item.id);
-                  setDueOnly(false);
-                }}
-              >
-                <item.icon size={16} />
-                {item.name}
-                <span>{item.count}</span>
-              </button>
-            ))}
-          </div>
-          <div className="queue-toolbar">
-            <span>
-              {shown.length} {shown.length === 1 ? "record" : "records"}
-            </span>
-            <div
-              className="daybook-owner-filter"
-              role="group"
-              aria-label="Show work for"
-            >
-              <span>Show work for</span>
-              <button
-                className={cn(assignee === "everyone" && "selected")}
-                aria-pressed={assignee === "everyone"}
-                onClick={() => setAssignee("everyone")}
-              >
-                Everyone
-              </button>
-              {founders.map((member) => (
-                <button
-                  key={member.id}
-                  className={cn(assignee === member.id && "selected")}
-                  aria-pressed={assignee === member.id}
-                  onClick={() => setAssignee(member.id)}
-                >
-                  {member.name}
-                </button>
-              ))}
-              {founders.length >= 2 && (
-                <button
-                  className={cn(assignee === "__both" && "selected")}
-                  aria-pressed={assignee === "__both"}
-                  onClick={() => setAssignee("__both")}
-                >
-                  Both
-                </button>
-              )}
-              <label>
-                <input
-                  type="checkbox"
-                  checked={dueOnly}
-                  onChange={(e) => setDueOnly(e.target.checked)}
-                />
-                Due by today
-              </label>
-            </div>
-          </div>
-          {shown.length ? (
-            <div className="daybook-list">
-              <section
-                className="daybook-section"
-                aria-labelledby="daybook-today"
-              >
-                <div className="daybook-section-head">
-                  <span className="daybook-section-dot" />
-                  <h3 id="daybook-today">Today</h3>
-                  <span>
-                    {todayRecords.length
-                      ? "In order of due time"
-                      : "Nothing due today"}
-                  </span>
-                </div>
-                {todayRecords.map((record) => (
-                  <DaybookCard
-                    key={record.id}
-                    record={record}
-                    selected={selectedRecord?.id === record.id}
-                    onSelect={() => setSelectedId(record.id)}
-                    icon={
-                      record.kind === "draft" ? (
-                        <NotePencil size={14} />
-                      ) : record.kind === "meeting" ? (
-                        <CalendarBlank size={14} />
-                      ) : record.kind === "conversation" ? (
-                        <Tray size={14} />
-                      ) : (
-                        <CheckCircle size={14} />
-                      )
-                    }
-                  />
-                ))}
-              </section>
-              {laterRecords.length > 0 && (
-                <section
-                  className="daybook-section daybook-section-later"
-                  aria-labelledby="daybook-later"
-                >
-                  <div className="daybook-section-head">
-                    <span className="daybook-section-dot" />
-                    <h3 id="daybook-later">Later</h3>
-                    <span>{laterRecords.length} queued next</span>
-                  </div>
-                  {laterRecords.map((record) => (
-                    <DaybookCard
-                      key={record.id}
-                      record={record}
-                      selected={selectedRecord?.id === record.id}
-                      onSelect={() => setSelectedId(record.id)}
-                      icon={<CheckCircle size={14} />}
-                    />
-                  ))}
-                </section>
-              )}
-            </div>
-          ) : (
-            <Empty
-              title={
-                source.length
-                  ? "No records match these filters"
-                  : queue === "drafts"
-                    ? "No drafts to review"
-                    : queue === "replies"
-                      ? "No conversations need a reply"
-                      : queue === "meetings"
-                        ? "No meetings scheduled"
-                        : "No open work"
-              }
-              description={
-                source.length
-                  ? "Clear the assignment or date filter to see other records."
-                  : queue === "drafts"
-                    ? "Create a draft linked to a person. Approval and sending remain separate actions."
-                    : "Create a record to add it to this project."
-              }
-              action={
-                source.length
-                  ? "Clear filters"
-                  : queue === "drafts"
-                    ? "Create draft"
-                    : queue === "replies"
-                      ? "Add conversation"
-                      : queue === "meetings"
-                        ? "Schedule meeting"
-                        : "Create task"
-              }
-              onAction={() =>
-                source.length
-                  ? (setAssignee("everyone"), setDueOnly(false))
-                  : openCreate(
-                      queue === "drafts"
-                        ? "draft"
-                        : queue === "replies"
-                          ? "conversation"
-                          : queue === "meetings"
-                            ? "meeting"
-                            : "task",
-                    )
-              }
-              icon={<Tray size={24} />}
-            />
-          )}
-          <div className="queue-footer">
-            <span>
-              {shown.length > 12
-                ? `Showing 12 of ${shown.length}`
-                : "Records from this project"}
-            </span>
-            <button
-              className="text-link"
-              onClick={() =>
-                setPage(
-                  queue === "drafts" || queue === "replies" ? "inbox" : "work",
-                )
-              }
-            >
-              Open{" "}
-              {queue === "drafts" || queue === "replies" ? "inbox" : "work"}
-              <ArrowRight size={14} />
+        <div className="daybook-agenda">
+          {renderSection("Today", now, today)}
+          {renderSection("Tomorrow", tomorrowStart, tomorrow)}
+          <div className="daybook-agenda-footer">
+            <p>Unscheduled and later work lives in Work.</p>
+            <button className="text-link" onClick={() => setPage("work")}>
+              Open work <ArrowRight size={14} />
             </button>
           </div>
-        </section>
-        <aside className="today-aside">
-          <RecordContext record={selectedRecord} eyebrow="USEFUL CONTEXT" />
-          <section className="project-overview index-section">
-            <div className="index-heading">
-              <span>PROJECT</span>
-              <h2>At a glance</h2>
-            </div>
-            <div className="project-overview-name">
-              <span className="project-symbol">
-                {initials(project?.name || "Project")}
-              </span>
-              <div>
-                <strong>{project?.name || "Current project"}</strong>
-                <span>
-                  {workspace.members.length} project{" "}
-                  {workspace.members.length === 1 ? "member" : "members"}
-                </span>
-              </div>
-            </div>
-            <dl>
-              <div>
-                <dt>People</dt>
-                <dd>{records.filter((r) => r.kind === "contact").length}</dd>
-              </div>
-              <div>
-                <dt>Open opportunities</dt>
-                <dd>{opportunities.length}</dd>
-              </div>
-              <div>
-                <dt>Unassigned open work</dt>
-                <dd>{tasks.filter((r) => !r.ownerId).length}</dd>
-              </div>
-            </dl>
-            <button className="text-link" onClick={() => setPage("reports")}>
-              Project reports
-              <ArrowRight size={14} />
-            </button>
-          </section>
-          <section className="compact-panel index-section">
-            <div className="index-heading">
-              <span>NEXT</span>
-              <h2>Next meetings</h2>
-              <strong>{meetings.length}</strong>
-            </div>
-            {meetings.length ? (
-              meetings.slice(0, 3).map((r) => (
-                <button
-                  className="meeting-item"
-                  key={r.id}
-                  onClick={() => openRecord(r)}
-                >
-                  <CalendarBlank size={18} />
-                  <span>
-                    <strong>{r.title}</strong>
-                    <small>
-                      {text(r, "startsAt")
-                        ? new Date(text(r, "startsAt")).toLocaleString(
-                            undefined,
-                            {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            },
-                          )
-                        : "Time not set"}
-                    </small>
-                  </span>
-                  <ArrowUpRight size={14} />
-                </button>
-              ))
-            ) : (
-              <p className="compact-empty">No meetings scheduled.</p>
-            )}
-            <Button tone="quiet" onClick={() => openCreate("meeting")}>
-              <Plus size={15} />
-              Schedule meeting
-            </Button>
-          </section>
-        </aside>
-      </div>
-      <section className="panel activity-panel today-activity">
-        <div className="index-heading activity-heading">
-          <span>LOG</span>
-          <h2>Recent activity</h2>
         </div>
-        <ActivityList
-          activities={workspace.activities
-            .slice()
-            .sort((a, b) => b.at.localeCompare(a.at))
-            .slice(0, 5)}
-          records={records}
-        />
-      </section>
-    </>
+        <RecordContext record={selected} eyebrow="SELECTED WORK" />
+      </div>
+    </div>
   );
 }
-
 function CheckSquareIcon() {
   return <CheckCircle size={25} />;
 }
