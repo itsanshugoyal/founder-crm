@@ -14,6 +14,13 @@ The transfer removed the Git repository link. Reconnecting `itsanshugoyal/founde
 
 On 27 October 2026, a new manual production deployment for commit `23014b1` succeeded: `dpl_7iFQjtcYLXWkWMu82nkCytzPX2bh`. Its production candidate is `founder-7y3rlol3f-delta-7460.vercel.app` and the canonical `founder-crm-rouge.vercel.app` alias now points to it. Live checks returned: root 200, health 200 with configured database/auth, anonymous session 200 with no workspace, and anonymous workspace 401. Git remains disconnected, so this success does **not** restore automatic deployment on pushes.
 
+On 27 October 2026, the Daybook and workspace redesign at commit `bc758fb`
+was manually deployed successfully as `dpl_6uvh5uvNRHih9M72ztCyPqDxv8Sh`.
+Vercel assigned the canonical `founder-crm-rouge.vercel.app` alias to that
+release. The public root and health endpoint returned 200; the anonymous
+workspace endpoint returned 401. This verifies the deployment and basic
+privacy boundary, not a signed-in user workflow or external provider setup.
+
 The local project link now targets Delta. Its separate CLI login is stored only in the ignored `.local/vercel-deltaodcom` directory; commands for this project need both `--scope delta-7460` and `--global-config C:/code/founder-crm/.local/vercel-deltaodcom`. Do not print credential files or pass their contents as command arguments. Personal Git authors remain `itsanshugoyal`.
 
 ### Earlier setup (historical)
