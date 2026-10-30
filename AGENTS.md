@@ -31,3 +31,8 @@ Never use the `itsanshu-code` identity here. Do not rewrite published history
 unless the user explicitly asks. A Vercel deployment is a separate external
 effect; follow `docs/VERCEL.md`, preserve the live release if a deployment is
 blocked, and record the exact limitation instead of claiming a deploy.
+
+
+## Current production database
+
+As of 31 October 2026, Founder CRM uses Supabase project `lkjzebcnkhucuvzspbip` in Mumbai behind `https://founder-crm-rouge.vercel.app`. The previous project `thnqkgxpeyjholkbocnc` is a frozen rollback source; never re-enable its write path or switch traffic back without reconciling all newer Mumbai writes. The Mumbai MCP is `supabase-mumbai`. Keep connection credentials private. See `docs/VERCEL.md` and `pending.md` for verification and outstanding founder sign-in.
