@@ -25,9 +25,11 @@ future timer fired. One scoped writer works at a time. For more than five CRM
 writes, prepare a bounded scratch script, preview exact IDs and fields, apply
 atomically where supported, and structurally read back the result.
 
-Before each push, verify the project and remote, then ask the user which
-GitHub account to use. A choice explicitly given for the current push is
-sufficient; do not ask twice. Founder CRM's upstream is
+For this Founder CRM project, use the user's personal `deviljitu1` GitHub
+account by default. Do not ask which account to use again unless the user
+changes this preference. Before each push, verify the project, remote, and
+authenticated account. This preference does not itself authorize new pushes.
+Founder CRM's upstream is
 `https://github.com/itsanshugoyal/founder-crm.git`. Keep personal and Shubham K
 Mart accounts separate. Use the selected account's verified author/committer
 identity, and a personal fork plus pull request when upstream access is absent.

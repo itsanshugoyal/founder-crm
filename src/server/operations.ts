@@ -619,15 +619,6 @@ export async function applyMutation(
     return { project };
   }
   const project = requireProject(state, actor, projectId);
-  if (action === "update_project") {
-    owner(actor);
-    project.name = cleanString(payload.name, "Project name", 100);
-    project.description =
-      typeof payload.description === "string" ? payload.description.trim().slice(0, 500) : project.description;
-    project.version = (project.version ?? 1) + 1;
-    audit(state, actor, projectId, null, action, "Updated project details");
-    return { project, message: "Project updated" };
-  }
   if (action === "delete_project") {
     owner(actor);
     assert(state.projects.length > 1, "Create another project before deleting the last project.");

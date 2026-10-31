@@ -4,7 +4,14 @@
 
 Keep Founder CRM's existing/original visual language: white navigation, cool-grey canvas, charcoal emphasis, coral accent, concise layouts, and the current data model. Do not replace the app with the earlier dark/lime mascot concept.
 
-This handoff describes the changes currently present in the local checkout. They are uncommitted and have not been deployed or pushed.
+This handoff describes the changes submitted in pull request #1 to the upstream repository. Deployment remains a separate step.
+
+## Database compatibility and deployment
+
+- The current features use the existing six CRM tables and `crm_snapshot` / `crm_commit` functions; no additional table or data migration is required. Graphs derive from existing records, automation uses typed records, MCP tokens use server-private state, and project updates use the existing JSON project body.
+- Project management reuses the existing version-checked update handler, preserving project settings validation and draft approval invalidation.
+- The authoritative Supabase project is `lkjzebcnkhucuvzspbip` (Mumbai), as recorded in the upstream cutover documentation. Preserve its current data and Auth setup.
+- After merging, deploy the changed frontend and API. If Vercel uses `CRM_EDGE_URL`, deploy the updated Supabase Edge Function as well: Vercel-only frontend deployment will not update the remote backend or MCP handlers. Keep the edge destination on the Mumbai project. If Vercel hosts the Node API directly, preserve its Mumbai Supabase server environment variables. Verify sign-in, project settings and authenticated MCP against the deployed version.
 
 ## Local development
 

@@ -934,7 +934,8 @@ export default function App() {
   }
 
   async function manageCurrentProject(targetProjectId: string, action: "update_project" | "delete_project", payload: Fields) {
-    const result = await mutate(session?.csrfToken || "", targetProjectId, action, payload);
+    const targetProject = workspace?.projects.find((item) => item.id === targetProjectId);
+    const result = await mutate(session?.csrfToken || "", targetProjectId, action, payload, undefined, targetProject?.version);
     if (action === "delete_project") {
       const nextProjectId = String(result.nextProjectId || "");
       setManageProject(false);
