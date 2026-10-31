@@ -25,8 +25,14 @@ future timer fired. One scoped writer works at a time. For more than five CRM
 writes, prepare a bounded scratch script, preview exact IDs and fields, apply
 atomically where supported, and structurally read back the result.
 
-This is a personal repository. Before every commit or push, verify the remote,
-author, and committer resolve to `Anshu Goyal <72263458+itsanshugoyal@users.noreply.github.com>` and `https://github.com/itsanshugoyal/founder-crm.git`.
+For this Founder CRM project, use the user's personal `deviljitu1` GitHub
+account by default. Do not ask which account to use again unless the user
+changes this preference. Before each push, verify the project, remote, and
+authenticated account. This preference does not itself authorize new pushes.
+Founder CRM's upstream is
+`https://github.com/itsanshugoyal/founder-crm.git`. Keep personal and Shubham K
+Mart accounts separate. Use the selected account's verified author/committer
+identity, and a personal fork plus pull request when upstream access is absent.
 Never use the `itsanshu-code` identity here. Do not rewrite published history
 unless the user explicitly asks. A Vercel deployment is a separate external
 effect; follow `docs/VERCEL.md`, preserve the live release if a deployment is

@@ -380,8 +380,8 @@ export const modules: Record<RecordKind, Module> = {
 
   automation: {
     label: "Automation",
-    singular: "Codex job",
-    description: "Codex job instructions, execution status, and receipts.",
+    singular: "automation request",
+    description: "Reviewable automation setup requests, run status, and receipts.",
     statuses: [
       "Queued",
       "Running",

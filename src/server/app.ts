@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type {
   Fields,
   Member,
@@ -36,6 +37,7 @@ import {
   sign,
 } from "./security.js";
 import { Providers } from "./providers.js";
+import { createRemoteMcpServer } from "./mcp.js";
 
 export interface Environment {
   SUPABASE_URL?: string;
@@ -585,6 +587,25 @@ export async function createApplication(options: AppOptions = {}) {
     const csrfToken = await sessionCookie(c, member.id);
     return c.json({ authenticated: true, actor: member, csrfToken, readiness });
   });
+  const remoteMcp = async (c: Context) => {
+    const auth = await authenticate(c);
+    assert(auth?.actor.machine, "Use a project-scoped MCP token.", 401);
+    assert(auth.actor.projectId, "MCP token is missing its project scope.", 403);
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
+    const server = createRemoteMcpServer({
+      db: database(),
+      actor: auth.actor,
+      projectId: auth.actor.projectId,
+      origin: env.APP_ORIGIN ?? new URL(c.req.url).origin,
+    });
+    await server.connect(transport);
+    return transport.handleRequest(c.req.raw);
+  };
+  app.all("/mcp", remoteMcp);
+  app.all("/api/mcp", remoteMcp);
   app.use("/api/*", async (c, next) => {
     if (
       [

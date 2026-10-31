@@ -619,6 +619,38 @@ export async function applyMutation(
     return { project };
   }
   const project = requireProject(state, actor, projectId);
+  if (action === "delete_project") {
+    owner(actor);
+    assert(state.projects.length > 1, "Create another project before deleting the last project.");
+    assert(
+      payload.confirmation === project.name,
+      "Type the exact project name to confirm deletion.",
+    );
+    const removedRecordIds = new Set(
+      state.records.filter((record) => record.projectId === projectId).map((record) => record.id),
+    );
+    state.projects = state.projects.filter((candidate) => candidate.id !== projectId);
+    state.records = state.records.filter((record) => record.projectId !== projectId);
+    state.activities = state.activities.filter((activity) => activity.projectId !== projectId);
+    for (const member of state.members)
+      member.projectIds = member.projectIds.filter((id) => id !== projectId);
+    for (const [key, token] of Object.entries(state.private.tokens))
+      if (token.projectId === projectId) delete state.private.tokens[key];
+    for (const [key, share] of Object.entries(state.private.shares))
+      if (removedRecordIds.has(share.recordId)) delete state.private.shares[key];
+    if (state.private.connections)
+      for (const [key, connection] of Object.entries(state.private.connections))
+        if (connection.projectId === projectId) delete state.private.connections[key];
+    if (state.private.providerSettings) delete state.private.providerSettings[projectId];
+    const nextProject = state.projects.find((candidate) =>
+      actor.member.projectIds.includes(candidate.id),
+    );
+    assert(nextProject, "No remaining project is available.");
+    return {
+      message: `Deleted ${project.name}`,
+      nextProjectId: nextProject.id,
+    };
+  }
   const allowedMachine = [
     "create_record",
     "update_record",

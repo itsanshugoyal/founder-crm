@@ -182,6 +182,19 @@ test("identity changes retain duplicate and opt-out protection for earlier addre
     /suppressed/,
   );
 });
+test("project management preserves settings validation and rejects stale updates", async () => {
+  const { state, actor } = fixture();
+  const edit = { ...mutation("update_project", { name: "Renamed", settings: { dailySendLimit: 12 } }), version: 1 };
+  await applyMutation(state, actor, edit, "http://localhost");
+  assert.equal(state.projects[0].name, "Renamed");
+  assert.equal(state.projects[0].settings.dailySendLimit, 12);
+  assert.equal(state.projects[0].settings.hourlySendLimit, 5);
+  await assert.rejects(() => applyMutation(state, actor, edit, "http://localhost"), /Project changed/);
+  await assert.rejects(() => applyMutation(state, actor, {
+    ...mutation("update_project", { settings: { dailySendLimit: 0 } }), version: 2,
+  }, "http://localhost"), /Send limits/);
+});
+
 function fixture() {
   const state = normalizeState({});
   state.projects = [

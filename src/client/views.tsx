@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { AnimationItem } from "lottie-web";
 
 import { Dialog } from "@base-ui/react/dialog";
 
@@ -35,6 +36,7 @@ import { CaretLeftIcon as CaretLeft } from "@phosphor-icons/react/dist/csr/Caret
 import { CaretRightIcon as CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 import { LinkSimpleIcon as LinkSimple } from "@phosphor-icons/react/dist/csr/LinkSimple";
 import { ArrowCounterClockwiseIcon as ArrowCounterClockwise } from "@phosphor-icons/react/dist/csr/ArrowCounterClockwise";
+import { ChartBarIcon as ChartBar } from "@phosphor-icons/react/dist/csr/ChartBar";
 
 import { PLAYBOOKS } from "../shared/playbooks";
 
@@ -69,6 +71,34 @@ import {
 import { csvExport, mutate, downloadInvoice } from "./api";
 import { DraftReview, draftReviewNote } from "./DraftReview";
 import { draftPurpose } from "../shared/draft-purpose";
+import greetingBunny from "./assets/dashboard/greeting-bunny.webp";
+import dashboardPeopleMascot from "./assets/dashboard/metric-people-kitten.webp";
+import dashboardPipelineMascot from "./assets/dashboard/metric-pipeline-panda.webp";
+import dashboardDueMascot from "./assets/dashboard/metric-due-dinosaur.webp";
+import dashboardReplyMascot from "./assets/dashboard/metric-reply-chick.webp";
+import draftMascot from "./assets/dashboard/metric-draft-kitten.webp";
+import moneyMascot from "./assets/dashboard/metric-money-raccoon.webp";
+import knowledgeMascot from "./assets/dashboard/metric-knowledge-owl.webp";
+import automationMascot from "./assets/dashboard/metric-automation-robot.webp";
+import companiesMascot from "./assets/dashboard/metric-companies.webp";
+import followupsMascot from "./assets/dashboard/metric-followups.webp";
+import unassignedMascot from "./assets/dashboard/metric-unassigned.webp";
+import opportunitiesMascot from "./assets/dashboard/metric-opportunities.webp";
+import payingMascot from "./assets/dashboard/metric-paying.webp";
+import completedTasksMascot from "./assets/dashboard/metric-completed-tasks.webp";
+import overdueTasksMascot from "./assets/dashboard/metric-overdue-tasks.webp";
+import meetingsMascot from "./assets/dashboard/metric-meetings.webp";
+import invoicesMascot from "./assets/dashboard/metric-invoices.webp";
+import overdueInvoicesMascot from "./assets/dashboard/metric-overdue-invoices.webp";
+import currentKnowledgeMascot from "./assets/dashboard/metric-current-knowledge.webp";
+import reviewKnowledgeMascot from "./assets/dashboard/metric-review-knowledge.webp";
+import linkedKnowledgeMascot from "./assets/dashboard/metric-linked-knowledge.webp";
+import completedRunsMascot from "./assets/dashboard/metric-completed-runs.webp";
+import reviewRunsMascot from "./assets/dashboard/metric-review-runs.webp";
+import humanApprovalMascot from "./assets/dashboard/metric-human-approval.webp";
+import waitingReplyMascot from "./assets/dashboard/metric-waiting-reply.webp";
+import recordedReplyMascot from "./assets/dashboard/metric-recorded-reply.webp";
+import sentMessagesMascot from "./assets/dashboard/metric-sent-messages.webp";
 
 export const label = (s: string) =>
   s.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -122,6 +152,56 @@ function PageHead({
       </div>
       <span className="page-head-mark" aria-hidden="true" />
     </header>
+  );
+}
+
+const metricMascots = {
+  companies: companiesMascot,
+  followups: followupsMascot,
+  unassigned: unassignedMascot,
+  opportunities: opportunitiesMascot,
+  paying: payingMascot,
+  completedTasks: completedTasksMascot,
+  overdueTasks: overdueTasksMascot,
+  meetings: meetingsMascot,
+  invoices: invoicesMascot,
+  overdueInvoices: overdueInvoicesMascot,
+  currentKnowledge: currentKnowledgeMascot,
+  reviewKnowledge: reviewKnowledgeMascot,
+  linkedKnowledge: linkedKnowledgeMascot,
+  completedRuns: completedRunsMascot,
+  reviewRuns: reviewRunsMascot,
+  humanApproval: humanApprovalMascot,
+  waitingReply: waitingReplyMascot,
+  recordedReply: recordedReplyMascot,
+  sentMessages: sentMessagesMascot,
+  people: dashboardPeopleMascot,
+  pipeline: dashboardPipelineMascot,
+  task: dashboardDueMascot,
+  reply: dashboardReplyMascot,
+  draft: draftMascot,
+  money: moneyMascot,
+  knowledge: knowledgeMascot,
+  automation: automationMascot,
+};
+
+function MetricSummary({ title, items }: {
+  title: string;
+  items: { label: string; value: number | string; detail: string; mascot: keyof typeof metricMascots; onClick?: () => void }[];
+}) {
+  return (
+    <section className="metric-summary" aria-label={title} data-count={items.length}>
+      {items.map((item) => {
+        const content = <>
+          <img src={metricMascots[item.mascot]} width={64} height={70} alt="" decoding="async" />
+          <span><small>{item.label}</small><strong>{item.value}</strong><em>{item.detail}</em></span>
+          {item.onClick && <ArrowRight size={15} aria-hidden="true" />}
+        </>;
+        return item.onClick ? (
+          <button key={item.label} type="button" onClick={item.onClick}>{content}</button>
+        ) : <article key={item.label}>{content}</article>;
+      })}
+    </section>
   );
 }
 
@@ -475,11 +555,114 @@ function MiniList({ records, empty }: { records: CrmRecord[]; empty: string }) {
   );
 }
 
+function GreetingHello({ intro, onComplete }: { intro: boolean; onComplete: () => void }) {
+  const animationHost = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let disposed = false;
+    let animation: AnimationItem | undefined;
+    let movement: Animation | undefined;
+    let removeIntroComplete: (() => void) | undefined;
+    let fallbackTimer: number | undefined;
+    const host = animationHost.current;
+    if (!host) return;
+    const canvas = document.createElement("div");
+    canvas.className = "dashboard-greeting-canvas";
+    const overlay = document.createElement("div");
+    overlay.className = "dashboard-welcome";
+    const shouldAnimate = intro && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const dock = () => {
+      if (disposed) return;
+      movement?.cancel();
+      movement = undefined;
+      canvas.className = "dashboard-greeting-canvas";
+      canvas.removeAttribute("style");
+      host.appendChild(canvas);
+      host.dataset.ready = "true";
+      overlay.remove();
+      animation?.goToAndStop(110, true);
+      onComplete();
+    };
+    const land = async () => {
+      if (disposed || !animation) return;
+      removeIntroComplete?.();
+      removeIntroComplete = undefined;
+      animation.goToAndStop(110, true);
+      const target = host.getBoundingClientRect();
+      const start = canvas.getBoundingClientRect();
+      const dx = target.left + target.width / 2 - (start.left + start.width / 2);
+      const dy = target.top + target.height / 2 - (start.top + start.height / 2);
+      const scale = target.width / start.width;
+      overlay.classList.add("is-settling");
+      movement = canvas.animate([
+        { transform: "translate(-50%, -50%) scale(1)" },
+        { transform: `translate(calc(-50% + ${dx * .5}px), calc(-50% + ${dy * .5 - 25}px)) scale(.58)`, offset: .5 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(${scale})` },
+      ], { duration: 950, easing: "cubic-bezier(.4, 0, .2, 1)", fill: "forwards" });
+      try { await movement.finished; dock(); } catch { /* Unmounted during the greeting. */ }
+    };
+    void Promise.all([
+      import("lottie-web"),
+      import("./assets/dashboard/dashboard-welcome.lottie.json"),
+    ]).then(([lottieModule, animationData]) => {
+      if (disposed) return;
+      if (shouldAnimate) {
+        canvas.classList.add("dashboard-welcome-character");
+        overlay.appendChild(canvas);
+        document.body.appendChild(overlay);
+      } else host.appendChild(canvas);
+      animation = lottieModule.default.loadAnimation({
+        container: canvas,
+        renderer: "svg",
+        loop: false,
+        autoplay: false,
+        animationData: structuredClone(animationData.default),
+        rendererSettings: { preserveAspectRatio: "xMidYMid meet", viewBoxSize: "278.887 458.406 543.882 160.537" },
+      });
+      const showHello = () => {
+        if (disposed || !animation) return;
+        if (shouldAnimate) {
+          animation.setSpeed(1.5);
+          removeIntroComplete = animation.addEventListener("complete", () => void land());
+          animation.playSegments([0, 110], true);
+        } else {
+          animation.goToAndStop(110, true);
+          dock();
+        }
+      };
+      if (animation.isLoaded) showHello();
+      else animation.addEventListener("DOMLoaded", showHello);
+      fallbackTimer = window.setTimeout(() => {
+        if (!host.dataset.ready && !disposed) dock();
+      }, 8000);
+    }).catch(() => {
+      if (!disposed) { overlay.remove(); onComplete(); }
+    });
+    return () => {
+      disposed = true;
+      window.clearTimeout(fallbackTimer);
+      removeIntroComplete?.();
+      movement?.cancel();
+      animation?.destroy();
+      canvas.remove();
+      overlay.remove();
+    };
+  }, []);
+
+  return <div ref={animationHost} className="dashboard-greeting-hello" aria-hidden="true"><span className="dashboard-hello-fallback">Hello!</span></div>;
+}
+
 export function TodayView() {
-  const { workspace, projectId, setPage } = useCRM();
+  const { workspace, projectId, setPage, openCreate, openRecord } = useCRM();
   const records = useRecords();
   const [assignee, setAssignee] = useState("everyone");
   const [selectedId, setSelectedId] = useState("");
+  const [indiaNow, setIndiaNow] = useState(() => new Date());
+  const greetingMascot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const interval = window.setInterval(() => setIndiaNow(new Date()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
@@ -550,6 +733,76 @@ export function TodayView() {
       day: "numeric",
       month: "long",
     });
+  const indiaParts = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(indiaNow);
+  const indiaHour = Number(indiaParts.find((part) => part.type === "hour")?.value || 0);
+  const greeting =
+    indiaHour < 12
+      ? "Good morning"
+      : indiaHour < 17
+        ? "Good afternoon"
+        : indiaHour < 21
+          ? "Good evening"
+          : "Hello";
+  const firstName = workspace.actor.name.trim().split(/\s+/)[0] || "there";
+  const welcomeStorageKey = `founder-crm-dashboard-welcome:v3:${projectId}:${workspace.actor.id}`;
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return !window.sessionStorage.getItem(welcomeStorageKey);
+    } catch {
+      return false;
+    }
+  });
+  const finishWelcome = () => {
+    try {
+      window.sessionStorage.setItem(welcomeStorageKey, "seen");
+    } catch {
+      // The greeting is still usable when storage is unavailable.
+    }
+    setShowWelcome(false);
+  };
+  const indiaTime = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  }).format(indiaNow);
+  const indiaDate = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(indiaNow);
+  const indiaMonth = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    month: "long",
+  }).format(indiaNow);
+  const indiaDay = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "numeric",
+  }).format(indiaNow);
+  const openOpportunities = records.filter(
+    (record) =>
+      record.kind === "opportunity" &&
+      !statusIs(record, "Lost", "Paying"),
+  );
+  const needsReply = records.filter(
+    (record) =>
+      (record.kind === "conversation" && statusIs(record, "Open", "Needs action")) ||
+      (record.kind === "draft" && statusIs(record, "Needs review")),
+  );
+  const dashboardMetrics = [
+    { label: "People", value: records.filter((record) => record.kind === "contact").length, detail: "people in this project", mascot: dashboardPeopleMascot, page: "people" as const },
+    { label: "Open pipeline", value: openOpportunities.length, detail: "opportunities in progress", mascot: dashboardPipelineMascot, page: "pipeline" as const },
+    { label: "Due today", value: today.length, detail: "commitments for today", mascot: dashboardDueMascot, page: "work" as const },
+    { label: "Needs reply", value: needsReply.length, detail: "items needing attention", mascot: dashboardReplyMascot, page: "inbox" as const },
+  ];
   const iconFor = (record: CrmRecord) =>
     record.kind === "draft" ? (
       <NotePencil size={14} />
@@ -591,30 +844,69 @@ export function TodayView() {
     </section>
   );
   return (
-    <div className="daybook-home">
+    <div className={cn("daybook-home", showWelcome && "dashboard-welcome-active")}>
       <header className="today-page-head daily-brief">
         <div className="brief-main">
           <div className="date-index">
-            <span>
-              {now
-                .toLocaleDateString(undefined, { month: "long" })
-                .toUpperCase()}
-            </span>
-            <strong>{now.getDate()}</strong>
-            <span>
-              {now.toLocaleDateString(undefined, {
-                weekday: "long",
-                year: "numeric",
-              })}
-            </span>
+            <span>{indiaMonth.toUpperCase()}</span>
+            <strong>{indiaDay}</strong>
+            <span>{indiaDate.split(",")[1]?.trim() || "India"}</span>
           </div>
-          <div className="today-heading-copy">
-            <span className="eyebrow">YOUR DAYBOOK</span>
-            <h1>Today, in order.</h1>
-            <p>Keep the promises. Leave room to think.</p>
+          <div className="dashboard-greeting-content">
+            <div ref={greetingMascot} className="dashboard-greeting-mascot" aria-label="Hello">
+              <div className="dashboard-greeting-bubble">
+                <GreetingHello intro={showWelcome} onComplete={finishWelcome} />
+              </div>
+              <img src={greetingBunny} alt="A friendly mascot waving hello" />
+            </div>
+            <div className="today-heading-copy">
+              <div className="dashboard-time">
+                <time dateTime={indiaNow.toISOString()}>{indiaTime} <em>IST</em></time>
+                <button
+                  className="dashboard-reminder-button"
+                  type="button"
+                  title="Set a reminder"
+                  aria-label="Set a reminder"
+                  onClick={() => openCreate("task")}
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              <h1>{greeting}, {firstName}!</h1>
+              <p>Here’s your dashboard for {indiaDate}.</p>
+            </div>
           </div>
         </div>
+        <aside className="dashboard-brief-focus" aria-label="Today’s focus">
+          <span className="eyebrow">TODAY’S FOCUS</span>
+          <strong>{selected ? selected.title : "Your calendar is clear"}</strong>
+          <p>
+            {selected
+              ? `${label(selected.kind)} · ${selected.dueAt ? `due ${dateLabel(selected.dueAt)}` : "choose its next useful step"}`
+              : "Your schedule is clear. Review open work when you are ready."}
+          </p>
+          <button
+            type="button"
+            onClick={() => (selected ? openRecord(selected) : setPage("work"))}
+          >
+            {selected ? "View selected work" : "Open work"}
+            <ArrowRight size={15} />
+          </button>
+        </aside>
       </header>
+      <section className="dashboard-summary" aria-label="Dashboard summary">
+        {dashboardMetrics.map(({ label: metricLabel, value, detail, mascot, page }) => (
+          <button type="button" key={metricLabel} onClick={() => setPage(page)}>
+            <img className="dashboard-summary-mascot" src={mascot} alt="" />
+            <span>
+              <small>{metricLabel}</small>
+              <strong>{value}</strong>
+              <em>{detail}</em>
+            </span>
+            <ArrowRight size={15} />
+          </button>
+        ))}
+      </section>
       <div className="daybook-filter-bar">
         <div
           className="daybook-owner-filter"
@@ -1221,6 +1513,7 @@ export function RecordsView({
 export function PeopleView() {
   const [tab, setTab] = useState<"contact" | "company">("contact");
   const records = useRecords("contact");
+  const companies = useRecords("company");
   const followUpsDue = records.filter(
     (record) => record.dueAt && new Date(record.dueAt) <= new Date(),
   ).length;
@@ -1254,14 +1547,12 @@ export function PeopleView() {
         title="People"
         description="A working record of who you know, what you know, and when to follow up."
       />
-      <div className="directory-summary" aria-label="Relationship overview">
-        <span>
-          <strong>{followUpsDue}</strong> follow-ups due
-        </span>
-        <span>
-          <strong>{unassigned}</strong> without an owner
-        </span>
-      </div>
+      <MetricSummary title="Relationship overview" items={[
+        { label: "People", value: records.length, detail: "contacts in this project", mascot: "people", onClick: () => setTab("contact") },
+        { label: "Companies", value: companies.length, detail: "organisations in this project", mascot: "companies", onClick: () => setTab("company") },
+        { label: "Follow-ups due", value: followUpsDue, detail: "contacts needing follow-through", mascot: "followups" },
+        { label: "Without an owner", value: unassigned, detail: "contacts needing assignment", mascot: "unassigned" },
+      ]} />
       <Tabs
         items={[
           ["contact", "People"],
@@ -1314,10 +1605,148 @@ function Tabs({
   );
 }
 
+function StatusGraph({
+  title,
+  description,
+  items,
+}: {
+  title: string;
+  description: string;
+  items: { label: string; value: number; detail?: string }[];
+}) {
+  const maximum = Math.max(...items.map((item) => item.value), 1);
+  return (
+    <section className="status-graph" aria-label={title}>
+      <header>
+        <div>
+          <span className="eyebrow">GRAPH VIEW</span>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        <ChartBar size={22} aria-hidden="true" />
+      </header>
+      <div className="status-graph-bars">
+        {items.map((item) => (
+          <div className="status-graph-row" key={item.label}>
+            <span>{item.label}</span>
+            <div
+              className="status-graph-track"
+              role="img"
+              aria-label={`${item.label}: ${item.value}`}
+            >
+              <span
+                className="status-graph-fill"
+                style={{ width: `${(item.value / maximum) * 100}%` }}
+              />
+            </div>
+            <strong>{item.value}</strong>
+            {item.detail && <small>{item.detail}</small>}
+          </div>
+        ))}
+      </div>
+      {!items.some((item) => item.value) && (
+        <p className="status-graph-empty">
+          Create records to see this graph populate.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function dailyCounts(
+  records: CrmRecord[],
+  when: (record: CrmRecord) => string,
+) {
+  const dates = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - offset));
+    return date;
+  });
+  return {
+    labels: dates.map((date) =>
+      date.toLocaleDateString(undefined, { weekday: "short" }),
+    ),
+    values: dates.map((date) => {
+      const next = new Date(date);
+      next.setDate(next.getDate() + 1);
+      return records.filter((record) => {
+        const recordedAt = new Date(when(record));
+        return recordedAt >= date && recordedAt < next;
+      }).length;
+    }),
+  };
+}
+
+function TrendGraph({
+  title,
+  description,
+  labels,
+  primary,
+  primaryLabel,
+  secondary,
+  secondaryLabel,
+}: {
+  title: string;
+  description: string;
+  labels: string[];
+  primary: number[];
+  primaryLabel: string;
+  secondary: number[];
+  secondaryLabel: string;
+}) {
+  const maximum = Math.max(...primary, ...secondary, 1);
+  const points = (values: number[]) =>
+    values
+      .map((value, index) => {
+        const x = 24 + (index * 552) / Math.max(values.length - 1, 1);
+        const y = 154 - (value / maximum) * 118;
+        return `${x},${y}`;
+      })
+      .join(" ");
+  const recent = primary.slice(-3).reduce((sum, value) => sum + value, 0);
+  const previous = primary.slice(0, 3).reduce((sum, value) => sum + value, 0);
+  const direction = recent > previous ? "Up" : recent < previous ? "Down" : "Steady";
+  return (
+    <section className="trend-graph" aria-label={title}>
+      <header>
+        <div>
+          <span className="eyebrow">TREND VIEW</span>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        <span className="trend-direction">{direction}</span>
+      </header>
+      <div className="trend-legend" aria-label="Graph legend">
+        <span className="trend-primary">{primaryLabel}</span>
+        <span className="trend-secondary">{secondaryLabel}</span>
+      </div>
+      <svg viewBox="0 0 600 180" role="img" aria-label={description}>
+        {[36, 76, 116, 154].map((y) => (
+          <line key={y} x1="24" x2="576" y1={y} y2={y} />
+        ))}
+        <polyline className="trend-line-secondary" points={points(secondary)} />
+        <polyline className="trend-line-primary" points={points(primary)} />
+      </svg>
+      <div className="trend-axis">
+        {labels.map((label, index) => (
+          <span key={`${label}-${index}`}>{label}</span>
+        ))}
+      </div>
+      <p className="trend-note">
+        Based on dated CRM records; it does not infer historical backlog.
+      </p>
+    </section>
+  );
+}
+
 export function PipelineView() {
-  const { openCreate, act, toast } = useCRM();
+  const { openCreate, act, toast, workspace } = useCRM();
   const records = useRecords("opportunity");
   const [mode, setMode] = useState("board");
+  const [graphMode, setGraphMode] = useState<"distribution" | "trend">(
+    "distribution",
+  );
   const [selectedId, setSelectedId] = useState("");
   const [draggingId, setDraggingId] = useState("");
   const [dropStage, setDropStage] = useState("");
@@ -1351,6 +1780,12 @@ export function PipelineView() {
         action="New opportunity"
         onAction={() => openCreate("opportunity")}
       />
+      <MetricSummary title="Pipeline overview" items={[
+        { label: "Opportunities", value: records.length, detail: "all recorded deals", mascot: "opportunities" },
+        { label: "Open pipeline", value: records.filter((record) => !statusIs(record, "Lost", "Paying")).length, detail: "active sales conversations", mascot: "pipeline" },
+        { label: "Paying", value: records.filter((record) => statusIs(record, "Paying")).length, detail: "customers converted", mascot: "paying" },
+        { label: "Needs an owner", value: records.filter((record) => !record.ownerId && !statusIs(record, "Lost", "Paying")).length, detail: "unassigned open opportunities", mascot: "unassigned" },
+      ]} />
       <div className="pipeline-toolbar">
         <div className="segmented">
           <button
@@ -1366,6 +1801,13 @@ export function PipelineView() {
           >
             <ListBullets size={16} />
             List
+          </button>
+          <button
+            className={mode === "graph" ? "selected" : ""}
+            onClick={() => setMode("graph")}
+          >
+            <ChartBar size={16} />
+            Graph
           </button>
         </div>
         <div className="pipeline-values">
@@ -1386,7 +1828,86 @@ export function PipelineView() {
           ))}
         </div>
       </div>
-      {mode === "list" ? (
+      {mode === "graph" ? (
+        <>
+          <div className="graph-controls" role="group" aria-label="Pipeline graph type">
+            <button
+              className={cn(graphMode === "distribution" && "selected")}
+              onClick={() => setGraphMode("distribution")}
+            >
+              Distribution
+            </button>
+            <button
+              className={cn(graphMode === "trend" && "selected")}
+              onClick={() => setGraphMode("trend")}
+            >
+              Trend
+            </button>
+          </div>
+          {graphMode === "distribution" ? (
+            <div className="graph-grid">
+            <StatusGraph
+            title="Pipeline by stage"
+            description="Open opportunities grouped by their current stage."
+            items={stages.map((stage) => {
+              const stageRecords = records.filter((record) =>
+                statusIs(record, stage),
+              );
+              return {
+                label: stage,
+                value: stageRecords.length,
+                detail: currencies
+                  .map((currency) =>
+                    money(
+                      stageRecords
+                        .filter(
+                          (record) => text(record, "currency") === currency,
+                        )
+                        .reduce(
+                          (sum, record) =>
+                            sum + Number(record.data.amountCents || 0),
+                          0,
+                        ),
+                      currency,
+                    ),
+                  )
+                  .join(" · "),
+              };
+            })}
+          />
+          <StatusGraph
+            title="Pipeline by owner"
+            description="Open opportunities grouped by their assigned owner."
+            items={[
+              ...workspace.members.map((member) => ({
+                label: member.name,
+                value: records.filter(
+                  (record) =>
+                    !statusIs(record, "Lost") && record.ownerId === member.id,
+                ).length,
+              })),
+              {
+                label: "Unassigned",
+                value: records.filter(
+                  (record) => !statusIs(record, "Lost") && !record.ownerId,
+                ).length,
+              },
+            ].filter((item) => item.value || item.label === "Unassigned")}
+            />
+            </div>
+          ) : (
+            <TrendGraph
+              title="Pipeline activity trend"
+              description="New opportunities and opportunity updates across the last seven days."
+              labels={dailyCounts(records, (record) => record.createdAt).labels}
+              primary={dailyCounts(records, (record) => record.createdAt).values}
+              primaryLabel="New opportunities"
+              secondary={dailyCounts(records, (record) => record.updatedAt).values}
+              secondaryLabel="Opportunity updates"
+            />
+          )}
+        </>
+      ) : mode === "list" ? (
         <RecordsView kind="opportunity" hideHead />
       ) : (
         <div className="pipeline-workbench">
@@ -1505,6 +2026,194 @@ export function PipelineView() {
         Pipeline values are potential amounts, separated by currency. They do
         not represent collected revenue. Drag a card between stages, or use its
         stage control when you prefer the keyboard.
+      </p>
+    </>
+  );
+}
+
+export function AnalyticsView({ embedded = false }: { embedded?: boolean }) {
+  const { workspace, setPage } = useCRM();
+  const records = useRecords();
+  const opportunities = records.filter(
+    (record) => record.kind === "opportunity" && !statusIs(record, "Lost"),
+  );
+  const tasks = records.filter(
+    (record) => record.kind === "task" && !isComplete(record),
+  );
+  const payments = records.filter(
+    (record) =>
+      record.kind === "payment" && statusIs(record, "Received", "Observed"),
+  );
+  const currencies = [
+    ...new Set(
+      opportunities.concat(payments).map((record) => text(record, "currency") || "INR"),
+    ),
+  ];
+  const dates = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - offset));
+    return date;
+  });
+  const dailyActivity = dates.map((date) => {
+    const next = new Date(date);
+    next.setDate(next.getDate() + 1);
+    return records.filter((record) => {
+      const updated = new Date(record.updatedAt);
+      return updated >= date && updated < next;
+    }).length;
+  });
+  const activityMaximum = Math.max(...dailyActivity, 1);
+  const sources = [
+    {
+      name: "Google Analytics 4",
+      detail: "Website traffic and events",
+      keys: ["ga4", "google analytics"],
+    },
+    {
+      name: "Google Tag Manager",
+      detail: "Tracking configuration, not reporting",
+      keys: ["gtm", "tag manager"],
+    },
+    {
+      name: "Microsoft Clarity",
+      detail: "Behaviour and recordings",
+      keys: ["clarity"],
+    },
+    {
+      name: "Bing Webmaster Tools",
+      detail: "Search performance",
+      keys: ["bing", "webmaster"],
+    },
+    {
+      name: "Vercel Analytics",
+      detail: "Web performance",
+      keys: ["vercel"],
+    },
+  ];
+  const sourceStatus = (keys: string[]) => {
+    const found = workspace.integrations.find((integration) =>
+      keys.some((key) =>
+        `${integration.provider} ${integration.label}`
+          .toLowerCase()
+          .includes(key),
+      ),
+    );
+    return found?.status === "connected" ? "Connected" : "Not connected";
+  };
+
+  return (
+    <>
+      {!embedded && (
+        <PageHead
+          eyebrow="PROJECT INSIGHTS"
+          title="Analytics"
+          description="See CRM activity, pipeline movement, and connected marketing signals."
+        />
+      )}
+      {!embedded && (
+        <section className="analytics-hero">
+          <div>
+            <span className="eyebrow">CRM ANALYTICS</span>
+            <h2>Insights, in context.</h2>
+            <p>
+              Start with your CRM signals, then connect your marketing sources.
+            </p>
+          </div>
+          <Button tone="quiet" onClick={() => setPage("settings")}>
+            Manage sources
+            <ArrowUpRight size={16} />
+          </Button>
+        </section>
+      )}
+      <MetricSummary title="Analytics overview" items={[
+        { label: "Open pipeline", value: opportunities.length, detail: "active opportunities", mascot: "pipeline", onClick: () => setPage("pipeline") },
+        { label: "People", value: records.filter((record) => record.kind === "contact").length, detail: "CRM contacts", mascot: "people", onClick: () => setPage("people") },
+        { label: "Open work", value: tasks.length, detail: "tasks awaiting completion", mascot: "task", onClick: () => setPage("work") },
+        { label: "Recorded payments", value: payments.length, detail: "received or observed", mascot: "money", onClick: () => setPage("money") },
+      ]} />
+      <div className="analytics-grid">
+        <section className="analytics-panel analytics-activity">
+          <header>
+            <div>
+              <span className="eyebrow">LAST 7 DAYS</span>
+              <h2>CRM activity</h2>
+              <p>Records updated each day.</p>
+            </div>
+            <ChartBar size={20} />
+          </header>
+          <div className="analytics-activity-bars" aria-label="CRM activity chart">
+            {dailyActivity.map((value, index) => (
+              <div key={dates[index].toISOString()}>
+                <span
+                  style={{ height: `${Math.max((value / activityMaximum) * 100, 4)}%` }}
+                  title={`${value} records updated`}
+                />
+                <small>{dates[index].toLocaleDateString(undefined, { weekday: "short" })}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+        <StatusGraph
+          title="Pipeline by stage"
+          description="Active opportunities grouped by their current stage."
+          items={modules.opportunity.statuses.map((stage) => ({
+            label: stage,
+            value: opportunities.filter((record) => statusIs(record, stage)).length,
+            detail: currencies
+              .map((currency) =>
+                money(
+                  opportunities
+                    .filter(
+                      (record) =>
+                        statusIs(record, stage) &&
+                        (text(record, "currency") || "INR") === currency,
+                    )
+                    .reduce(
+                      (sum, record) => sum + Number(record.data.amountCents || 0),
+                      0,
+                    ),
+                  currency,
+                ),
+              )
+              .join(" · "),
+          }))}
+        />
+        <section className="analytics-panel analytics-sources">
+          <header>
+            <div>
+              <span className="eyebrow">INTEGRATIONS</span>
+              <h2>Connected sources</h2>
+              <p>Connect a source before its data appears here.</p>
+            </div>
+            <LinkSimple size={20} />
+          </header>
+          <div className="analytics-source-list">
+            {sources.map((source) => {
+              const status = sourceStatus(source.keys);
+              return (
+                <div key={source.name}>
+                  <ChartBar size={16} />
+                  <span>
+                    <strong>{source.name}</strong>
+                    <small>{source.detail}</small>
+                  </span>
+                  <em className={status === "Connected" ? "source-connected" : ""}>
+                    {status}
+                  </em>
+                </div>
+              );
+            })}
+          </div>
+          <Button tone="quiet" onClick={() => setPage("settings")}>
+            Connect a data source
+            <Plus size={15} />
+          </Button>
+        </section>
+      </div>
+      <p className="view-footnote">
+        CRM figures are live project records. External analytics remain separate
+        until a source is connected and verified.
       </p>
     </>
   );
@@ -1637,21 +2346,26 @@ function TaskBoard({ tasks }: { tasks: CrmRecord[] }) {
 
 export function WorkView() {
   const [tab, setTab] = useState("task");
-  const [taskView, setTaskView] = useState<"board" | "list">("board");
-  const { openRecord, openCreate } = useCRM();
+  const [taskView, setTaskView] = useState<"board" | "list" | "graph">(
+    "board",
+  );
+  const [graphMode, setGraphMode] = useState<"distribution" | "trend">(
+    "distribution",
+  );
+  const { openRecord, openCreate, workspace } = useCRM();
   const records = useRecords();
   const openTasks = records
     .filter((record) => record.kind === "task" && !isComplete(record))
     .sort((a, b) => (a.dueAt || "9999").localeCompare(b.dueAt || "9999"));
   const nextTask = openTasks[0];
-  const sections: { kind: RecordKind; icon: typeof CheckCircle }[] = [
-    { kind: "task", icon: CheckCircle },
-    { kind: "content", icon: NotePencil },
-    { kind: "campaign", icon: SquaresFour },
-    { kind: "onboarding", icon: Users },
-    { kind: "meeting", icon: CalendarBlank },
-    { kind: "experiment", icon: Lightning },
-    { kind: "promise", icon: Clock },
+  const sections: { kind: RecordKind; mascot: keyof typeof metricMascots }[] = [
+    { kind: "task", mascot: "task" },
+    { kind: "content", mascot: "draft" },
+    { kind: "campaign", mascot: "pipeline" },
+    { kind: "onboarding", mascot: "people" },
+    { kind: "meeting", mascot: "task" },
+    { kind: "experiment", mascot: "automation" },
+    { kind: "promise", mascot: "task" },
   ];
   return (
     <>
@@ -1660,10 +2374,16 @@ export function WorkView() {
         title="Work"
         description="Commitments, campaigns, meetings, and the next concrete action."
       />
+      <MetricSummary title="Work overview" items={[
+        { label: "Open tasks", value: openTasks.length, detail: "tasks awaiting completion", mascot: "task", onClick: () => setTab("task") },
+        { label: "Completed tasks", value: records.filter((record) => record.kind === "task" && statusIs(record, "Done", "Completed")).length, detail: "finished tasks", mascot: "completedTasks", onClick: () => setTab("task") },
+        { label: "Overdue tasks", value: openTasks.filter((record) => record.dueAt && Date.parse(record.dueAt) < Date.now()).length, detail: "open tasks past their due time", mascot: "overdueTasks" },
+        { label: "Upcoming meetings", value: records.filter((record) => record.kind === "meeting" && !isComplete(record) && Date.parse(text(record, "startsAt") || record.dueAt || "") >= Date.now()).length, detail: "scheduled for the future", mascot: "meetings", onClick: () => setTab("meeting") },
+      ]} />
       <section className="work-focus" aria-label="Next open task">
         <div className="work-focus-index">
           <span>UP NEXT</span>
-          <CheckCircle size={27} />
+          <img src={metricMascots.task} width={54} height={60} alt="" />
         </div>
         <div className="work-focus-copy">
           <span className="eyebrow">
@@ -1704,7 +2424,7 @@ export function WorkView() {
             className={cn(tab === section.kind && "work-nav-active")}
             onClick={() => setTab(section.kind)}
           >
-            <section.icon size={17} />
+            <img src={metricMascots[section.mascot]} width={30} height={32} alt="" decoding="async" />
             <span>{modules[section.kind].label}</span>
             <strong>
               {records.filter((r) => r.kind === section.kind).length}
@@ -1716,7 +2436,7 @@ export function WorkView() {
           className={cn(tab === "playbooks" && "work-nav-active")}
           onClick={() => setTab("playbooks")}
         >
-          <BookOpen size={17} />
+          <img src={metricMascots.knowledge} width={30} height={32} alt="" decoding="async" />
           <span>Playbooks</span>
         </button>
       </div>
@@ -1742,6 +2462,14 @@ export function WorkView() {
                 <ListBullets size={16} />
                 List
               </button>
+              <button
+                className={taskView === "graph" ? "selected" : ""}
+                aria-pressed={taskView === "graph"}
+                onClick={() => setTaskView("graph")}
+              >
+                <ChartBar size={16} />
+                Graph
+              </button>
             </div>
             <p>
               Drag a card to move it. Use its status menu for a keyboard-safe
@@ -1752,6 +2480,93 @@ export function WorkView() {
             <TaskBoard
               tasks={records.filter((record) => record.kind === "task")}
             />
+          ) : taskView === "graph" ? (
+            <>
+              <div className="graph-controls" role="group" aria-label="Work graph type">
+                <button
+                  className={cn(graphMode === "distribution" && "selected")}
+                  onClick={() => setGraphMode("distribution")}
+                >
+                  Distribution
+                </button>
+                <button
+                  className={cn(graphMode === "trend" && "selected")}
+                  onClick={() => setGraphMode("trend")}
+                >
+                  Trend
+                </button>
+              </div>
+              {graphMode === "distribution" ? (
+                <div className="graph-grid">
+              <StatusGraph
+                title="Tasks by status"
+                description="Open and completed work grouped by its current status."
+                items={[
+                  ...modules.task.statuses,
+                  ...records
+                    .filter((record) => record.kind === "task")
+                    .map((record) => label(record.status)),
+                ]
+                  .filter(
+                    (status, index, all) =>
+                      all.findIndex(
+                        (candidate) =>
+                          statusKey(candidate) === statusKey(status),
+                      ) === index,
+                  )
+                  .map((status) => ({
+                    label: status,
+                    value: records.filter(
+                      (record) =>
+                        record.kind === "task" && statusIs(record, status),
+                    ).length,
+                  }))}
+              />
+              <StatusGraph
+                title="Tasks by owner"
+                description="Tasks grouped by their assigned owner."
+                items={[
+                  ...workspace.members.map((member) => ({
+                    label: member.name,
+                    value: records.filter(
+                      (record) =>
+                        record.kind === "task" && record.ownerId === member.id,
+                    ).length,
+                  })),
+                  {
+                    label: "Unassigned",
+                    value: records.filter(
+                      (record) => record.kind === "task" && !record.ownerId,
+                    ).length,
+                  },
+                ].filter((item) => item.value || item.label === "Unassigned")}
+              />
+                </div>
+              ) : (
+                <TrendGraph
+                  title="Work activity trend"
+                  description="Completed and newly created tasks across the last seven days."
+                  labels={dailyCounts(
+                    records.filter(
+                      (record) => record.kind === "task" && isComplete(record),
+                    ),
+                    (record) => record.updatedAt,
+                  ).labels}
+                  primary={dailyCounts(
+                    records.filter(
+                      (record) => record.kind === "task" && isComplete(record),
+                    ),
+                    (record) => record.updatedAt,
+                  ).values}
+                  primaryLabel="Completed tasks"
+                  secondary={dailyCounts(
+                    records.filter((record) => record.kind === "task"),
+                    (record) => record.createdAt,
+                  ).values}
+                  secondaryLabel="New tasks"
+                />
+              )}
+            </>
           ) : (
             <RecordsView key={tab} kind="task" hideHead />
           )}
@@ -1783,6 +2598,12 @@ export function MoneyView() {
         title="Money"
         description="Manage invoices, proposals, payments, and expenses by currency."
       />
+      <MetricSummary title="Money overview" items={[
+        { label: "Open invoices", value: records.filter((record) => record.kind === "invoice" && !isComplete(record)).length, detail: "invoices awaiting payment", mascot: "invoices", onClick: () => setTab("invoice") },
+        { label: "Overdue invoices", value: records.filter((record) => record.kind === "invoice" && !isComplete(record) && record.dueAt && Date.parse(record.dueAt) < Date.now()).length, detail: "open invoices past their due time", mascot: "overdueInvoices", onClick: () => setTab("invoice") },
+        { label: "Received payments", value: payments.length, detail: "confirmed payment records", mascot: "money", onClick: () => setTab("payment") },
+        { label: "Open proposals", value: records.filter((record) => record.kind === "proposal" && !statusIs(record, "Accepted", "Declined")).length, detail: "proposals awaiting a decision", mascot: "draft", onClick: () => setTab("proposal") },
+      ]} />
       <div className="money-summary">
         {currencies.length ? (
           currencies.map((c) => {
@@ -1981,6 +2802,12 @@ export function KnowledgeView() {
         title="Knowledge"
         description="The source-backed notes and decisions behind your work."
       />
+      <MetricSummary title="Knowledge overview" items={[
+        { label: "Saved notes", value: records.length, detail: "knowledge records", mascot: "knowledge" },
+        { label: "Current", value: records.filter((record) => statusIs(record, "Current")).length, detail: "up-to-date knowledge", mascot: "currentKnowledge" },
+        { label: "Review needed", value: records.filter((record) => statusIs(record, "Review needed")).length, detail: "notes needing a fresh review", mascot: "reviewKnowledge" },
+        { label: "Linked to people", value: linked, detail: "notes with a related contact", mascot: "linkedKnowledge" },
+      ]} />
       <section className="library-brief" aria-label="Research library overview">
         <div>
           <span className="eyebrow">THE RESEARCH LIBRARY</span>
@@ -1989,14 +2816,6 @@ export function KnowledgeView() {
             Save the source and date with each finding. Open linked person
             research from draft review.
           </p>
-        </div>
-        <div className="library-count">
-          <strong>{records.length}</strong>
-          <span>
-            saved {records.length === 1 ? "note" : "notes"}
-            <br />
-            {linked} linked to people
-          </span>
         </div>
       </section>
       <div className="workspace-section-heading">
@@ -2011,14 +2830,93 @@ export function KnowledgeView() {
   );
 }
 
+const AUTOMATION_BLUEPRINTS = [
+  {
+    id: "lead-follow-up",
+    title: "New lead follow-up",
+    trigger: "A qualified lead is added",
+    action: "Create an owned follow-up task and alert the owner",
+    detail: "Keeps new demand from sitting unassigned.",
+    jobType: "Review evidence",
+    approval: "No external action",
+  },
+  {
+    id: "reply-sla",
+    title: "Reply SLA reminder",
+    trigger: "A conversation has no reply for 3 days",
+    action: "Create a follow-up task and notify the conversation owner",
+    detail: "Escalates attention without sending a message for you.",
+    jobType: "Classify replies",
+    approval: "No external action",
+  },
+  {
+    id: "deal-handoff",
+    title: "Pipeline handoff",
+    trigger: "An opportunity moves to a new stage",
+    action: "Assign the next task and post an internal reminder",
+    detail: "Makes ownership explicit at each sales handoff.",
+    jobType: "Review evidence",
+    approval: "No external action",
+  },
+  {
+    id: "meeting-brief",
+    title: "Meeting brief",
+    trigger: "A meeting is completed",
+    action: "Prepare a summary, next steps, and a draft task list",
+    detail: "Uses Codex for preparation; a person reviews the result.",
+    jobType: "Summarize meeting",
+    approval: "Human review required",
+  },
+] as const;
+
 export function AutomationView() {
-  const { workspace } = useCRM();
+  const { act, openCreate, workspace } = useCRM();
+  const records = useRecords("automation");
+  const [tab, setTab] = useState<"rules" | "runs">("rules");
+  const [creating, setCreating] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const activeRuns = records.filter((record) =>
+    statusIs(record, "Queued", "Running", "Needs review"),
+  ).length;
+  const completedRuns = records.filter((record) => statusIs(record, "Completed"));
+
+  async function createSetupBrief(
+    blueprint: (typeof AUTOMATION_BLUEPRINTS)[number],
+  ) {
+    setCreating(blueprint.id);
+    setError("");
+    try {
+      await act("create_record", {
+        kind: "automation",
+        title: `Set up: ${blueprint.title}`,
+        status: "needs_review",
+        ownerId: workspace.actor.id,
+        data: {
+          jobType: blueprint.jobType,
+          instructions: `Configure this CRM workflow. Trigger: ${blueprint.trigger}. Action: ${blueprint.action}. Do not send external messages or make financial changes.`,
+          successCriteria: `Document the trigger, owner, exception path, and verification step. ${blueprint.approval}.`,
+          automationBlueprint: blueprint.id,
+          trigger: blueprint.trigger,
+          plannedAction: blueprint.action,
+          approval: blueprint.approval,
+        },
+      });
+      setTab("runs");
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setCreating(null);
+    }
+  }
+
   return (
     <>
       <PageHead
-        eyebrow="PREPARED WORK"
+        eyebrow="OPERATIONAL RULES"
         title="Automation"
-        description="Queue Codex work and inspect the recorded output and receipt."
+        description="Keep routine CRM follow-through reliable. Use Codex only for preparation and review."
+        action="New request"
+        onAction={() => openCreate("automation")}
       />
       <div className="runtime-banner">
         <span className="runtime-icon">
@@ -2027,9 +2925,8 @@ export function AutomationView() {
         <div>
           <strong>Local Codex runtime</strong>
           <p>
-            Queued jobs wait for a connected runtime. A queue entry alone does
-            not mean a job ran. Completion and outputs require a recorded
-            receipt.
+            Codex assists prepare work. Critical CRM rules should run from a
+            connected worker and record each result before they are trusted.
           </p>
         </div>
         <Badge>
@@ -2040,13 +2937,82 @@ export function AutomationView() {
             : "Connection not verified"}
         </Badge>
       </div>
-      <RecordsView kind="automation" hideHead />
+      <MetricSummary title="Automation overview" items={[
+        { label: "Active queue", value: activeRuns, detail: "queued, running, or awaiting review", mascot: "automation", onClick: () => setTab("runs") },
+        { label: "Completed runs", value: completedRuns.length, detail: "recorded completed requests", mascot: "completedRuns", onClick: () => setTab("runs") },
+        { label: "Needs review", value: records.filter((record) => statusIs(record, "Needs review")).length, detail: "requests needing a human review", mascot: "reviewRuns", onClick: () => setTab("runs") },
+        { label: "Safe by default", value: "Human", detail: "approval for external or financial actions", mascot: "humanApproval" },
+      ]} />
+      <div className="automation-tabs" role="tablist" aria-label="Automation sections">
+        <button
+          role="tab"
+          aria-selected={tab === "rules"}
+          className={cn(tab === "rules" && "active")}
+          onClick={() => setTab("rules")}
+        >
+          Rule blueprints
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "runs"}
+          className={cn(tab === "runs" && "active")}
+          onClick={() => setTab("runs")}
+        >
+          Requests & runs <span>{records.length}</span>
+        </button>
+      </div>
+      {tab === "rules" ? (
+        <>
+          <section className="automation-intro">
+            <div>
+              <span className="eyebrow">START SMALL</span>
+              <h2>Make the next step automatic, not the decision.</h2>
+            </div>
+            <p>Each blueprint opens a reviewable setup request. Nothing is activated or sent automatically.</p>
+          </section>
+          <div className="automation-blueprints">
+            {AUTOMATION_BLUEPRINTS.map((blueprint) => (
+              <article className="automation-blueprint" key={blueprint.id}>
+                <Lightning size={20} aria-hidden="true" />
+                <div>
+                  <h3>{blueprint.title}</h3>
+                  <dl>
+                    <div>
+                      <dt>When</dt>
+                      <dd>{blueprint.trigger}</dd>
+                    </div>
+                    <div>
+                      <dt>Then</dt>
+                      <dd>{blueprint.action}</dd>
+                    </div>
+                  </dl>
+                  <p>{blueprint.detail}</p>
+                </div>
+                <footer>
+                  <Badge>{blueprint.approval}</Badge>
+                  <Button
+                    tone="quiet"
+                    disabled={creating === blueprint.id}
+                    onClick={() => void createSetupBrief(blueprint)}
+                  >
+                    {creating === blueprint.id ? "Creating…" : "Create setup brief"}
+                    <ArrowRight size={15} />
+                  </Button>
+                </footer>
+              </article>
+            ))}
+          </div>
+          {error && <ErrorBox error={error} />}
+        </>
+      ) : (
+        <RecordsView kind="automation" hideHead />
+      )}
       <div className="automation-guidance">
         <ShieldCheck size={20} />
         <p>
-          Codex may research, prepare drafts, and propose changes inside this
-          project. Approval, external messages, invitations, publication, and
-          spending require an individual human action.
+          Use Codex to research, classify, summarize, and draft. Keep external
+          messages, invitations, publication, payments, and irreversible
+          changes behind a named human approval.
         </p>
       </div>
     </>
@@ -2142,6 +3108,12 @@ export function InboxView() {
         action={tab === "drafts" ? "New draft" : "Add conversation"}
         onAction={() => openCreate(tab === "drafts" ? "draft" : "conversation")}
       />
+      <MetricSummary title="Inbox overview" items={[
+        { label: "Needs a reply", value: needsReply.length, detail: "conversations needing attention", mascot: "reply", onClick: () => setTab("action") },
+        { label: "Waiting for reply", value: queues.find((queue) => queue.id === "waiting")!.records.length, detail: "awaiting a response", mascot: "waitingReply", onClick: () => setTab("waiting") },
+        { label: "Draft review", value: drafts.length, detail: "drafts awaiting a decision", mascot: "draft", onClick: () => setTab("drafts") },
+        { label: "Recorded replies", value: inbound.length, detail: "inbound messages recorded", mascot: "recordedReply", onClick: () => setTab("replies") },
+      ]} />
       <div className="inbox-safety">
         <ShieldCheck size={16} />
         <span>
@@ -2285,7 +3257,49 @@ export function InboxView() {
   );
 }
 
-export function ReportsView() {
+export function InsightsView({
+  initialTab = "analytics",
+}: {
+  initialTab?: "analytics" | "reports";
+}) {
+  const [tab, setTab] = useState(initialTab);
+  return (
+    <>
+      <PageHead
+        eyebrow="PROJECT INSIGHTS"
+        title="Insights"
+        description="Marketing signals, pipeline health, and record follow-through in one place."
+      />
+      <div className="insights-tabs" role="tablist" aria-label="Insights view">
+        <button
+          role="tab"
+          aria-selected={tab === "analytics"}
+          className={cn(tab === "analytics" && "insights-tab-active")}
+          onClick={() => setTab("analytics")}
+        >
+          <ChartBar size={16} />
+          Analytics
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "reports"}
+          className={cn(tab === "reports" && "insights-tab-active")}
+          onClick={() => setTab("reports")}
+        >
+          <ListBullets size={16} />
+          Reports
+        </button>
+      </div>
+      {tab === "analytics" ? (
+        <AnalyticsView embedded />
+      ) : (
+        <ReportsView embedded />
+      )}
+    </>
+  );
+}
+
+export function ReportsView({ embedded = false }: { embedded?: boolean }) {
   const records = useRecords();
   const contacts = records.filter((r) => r.kind === "contact");
   const opportunities = records.filter((r) => r.kind === "opportunity");
@@ -2303,24 +3317,19 @@ export function ReportsView() {
   const tasks = records.filter((r) => r.kind === "task");
   return (
     <>
-      <PageHead
-        eyebrow="PROJECT SIGNALS"
-        title="Reports"
-        description="Current project counts, pipeline stages, and record completeness."
-      />
-      <div className="report-metrics">
-        {[
-          ["People in your workspace", contacts.length],
-          ["Messages confirmed sent", sent.length],
-          ["Recorded inbound replies", replies.length],
-          ["Tasks completed", tasks.filter(isComplete).length],
-        ].map(([name, value]) => (
-          <div key={name}>
-            <span>{name}</span>
-            <strong>{value}</strong>
-          </div>
-        ))}
-      </div>
+      {!embedded && (
+        <PageHead
+          eyebrow="PROJECT SIGNALS"
+          title="Reports"
+          description="Current project counts, pipeline stages, and record completeness."
+        />
+      )}
+      <MetricSummary title="Reports overview" items={[
+        { label: "People", value: contacts.length, detail: "contacts in this project", mascot: "people" },
+        { label: "Messages confirmed sent", value: sent.length, detail: "drafts recorded as sent", mascot: "sentMessages" },
+        { label: "Recorded inbound replies", value: replies.length, detail: "inbound messages recorded", mascot: "recordedReply" },
+        { label: "Tasks completed", value: tasks.filter((record) => statusIs(record, "Done", "Completed")).length, detail: "finished tasks", mascot: "completedTasks" },
+      ]} />
       <div className="reports-grid">
         <section className="panel report-panel">
           <SectionHead
@@ -2419,6 +3428,7 @@ export function ReportsView() {
 export function SettingsView() {
   const { workspace, projectId, csrf, refresh, toast, act } = useCRM();
   const project = workspace.projects.find((p) => p.id === projectId);
+  const remoteMcpUrl = "https://founder-crm-rouge.vercel.app/mcp";
   const [tab, setTab] = useState("project");
   const [name, setName] = useState(project?.name || "");
   const [description, setDescription] = useState(project?.description || "");
@@ -2437,7 +3447,7 @@ export function SettingsView() {
   const [resultLink, setResultLink] = useState("");
   const [token, setToken] = useState("");
   const [tokenOpen, setTokenOpen] = useState(false);
-  const [tokenLabel, setTokenLabel] = useState("Local Codex");
+  const [tokenLabel, setTokenLabel] = useState("Remote MCP");
   const [expires, setExpires] = useState("7");
   const [provider, setProvider] = useState("gmail");
   const [setupOpen, setSetupOpen] = useState(false);
@@ -2816,10 +3826,10 @@ export function SettingsView() {
           {tab === "codex" && (
             <div className="settings-layout">
               <section className="panel settings-panel">
-                <SectionHead title="Codex access" />
+                <SectionHead title="Codex & MCP access" />
                 <p>
-                  Use a project token to let your local Codex runtime read
-                  project context and prepare changes.
+                  Connect an online MCP client to this project using a
+                  revocable, project-scoped token.
                 </p>
                 <div className="permission-list">
                   <div>
@@ -2846,6 +3856,23 @@ export function SettingsView() {
                   {mcpConnected
                     ? "Connected. Codex has successfully used this project’s MCP tools."
                     : "Not verified yet. Connect Codex with a project token, then run a connection check."}
+                </div>
+                <div className="mcp-endpoint">
+                  <div>
+                    <span className="eyebrow">REMOTE STREAMABLE HTTP</span>
+                    <strong>Remote MCP endpoint</strong>
+                    <p>
+                      Use this URL for Codex or an OpenAI API client. Create a
+                      short-lived project token first and pass it privately as
+                      a Bearer token.
+                    </p>
+                  </div>
+                  <div className="token-value">{remoteMcpUrl}</div>
+                  <CopyButton value={remoteMcpUrl} label="Copy endpoint" />
+                  <p className="mcp-chatgpt-note">
+                    ChatGPT custom apps require OAuth. Do not use a project
+                    token in a ChatGPT chat or paste it into a URL.
+                  </p>
                 </div>
                 {owner && (
                   <Button
@@ -2894,12 +3921,12 @@ export function SettingsView() {
                 )}
               </section>
               <aside className="settings-aside">
-                <BookOpen size={28} />
-                <h3>Project instructions</h3>
+                <ShieldCheck size={28} />
+                <h3>Remote access safety</h3>
                 <p>
-                  Add project instructions in Knowledge. Codex should read the
-                  latest version before preparing work. Review receipts in
-                  Automation and record history.
+                  This endpoint is scoped to one project. It can read records
+                  and prepare work, but cannot approve, send, invite, issue
+                  invoices, record payments, or manage access.
                 </p>
               </aside>
             </div>

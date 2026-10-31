@@ -5,6 +5,10 @@ const production =
   process.argv.includes("--production") ||
   process.env.NODE_ENV === "production";
 const env = process.env as Environment;
+// Vite proxies browser requests from :3460 to the local API on :3461.
+// Keep the browser origin explicit so a production APP_ORIGIN inherited by
+// the shell cannot make local CSRF/origin validation reject sign-in.
+if (!production) env.APP_ORIGIN = "http://127.0.0.1:3460";
 const db = production
   ? undefined
   : await createLocalDatabase(process.env.CRM_DATA_PATH ?? ".local/db");
