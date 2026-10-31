@@ -1,4 +1,5 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { flushSync } from "react-dom";
 
 import {
   createContext,
@@ -22,7 +23,9 @@ import { ChartBarIcon as ChartBar } from "@phosphor-icons/react/dist/csr/ChartBa
 import { WalletIcon as Wallet } from "@phosphor-icons/react/dist/csr/Wallet";
 import { BookOpenIcon as BookOpen } from "@phosphor-icons/react/dist/csr/BookOpen";
 import { LightningIcon as Lightning } from "@phosphor-icons/react/dist/csr/Lightning";
-import { GearSixIcon as GearSix } from "@phosphor-icons/react/dist/csr/GearSix";
+import { SlidersHorizontalIcon as SlidersHorizontal } from "@phosphor-icons/react/dist/csr/SlidersHorizontal";
+import { SunIcon as Sun } from "@phosphor-icons/react/dist/csr/Sun";
+import { MoonIcon as Moon } from "@phosphor-icons/react/dist/csr/Moon";
 import { PlusIcon as Plus } from "@phosphor-icons/react/dist/csr/Plus";
 import { MagnifyingGlassIcon as MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 import { CaretDownIcon as CaretDown } from "@phosphor-icons/react/dist/csr/CaretDown";
@@ -35,6 +38,10 @@ import { ArrowClockwiseIcon as ArrowClockwise } from "@phosphor-icons/react/dist
 import { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 import { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/dist/csr/WarningCircle";
 import { CommandIcon as Command } from "@phosphor-icons/react/dist/csr/Command";
+import { BellIcon as Bell } from "@phosphor-icons/react/dist/csr/Bell";
+import { FolderOpenIcon as FolderOpen } from "@phosphor-icons/react/dist/csr/FolderOpen";
+import { CaretLeftIcon as CaretLeft } from "@phosphor-icons/react/dist/csr/CaretLeft";
+import { CaretRightIcon as CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 
 import type {
   CrmRecord,
@@ -42,6 +49,7 @@ import type {
   MutationResult,
   RecordKind,
   Session,
+  Project,
   InvitationInfo,
   WorkspaceData,
 } from "../shared/types";
@@ -63,7 +71,7 @@ import {
   RequestError,
 } from "./api";
 
-import { active, initials, modules } from "./models";
+import { active, complete, initials, modules } from "./models";
 import { verificationCallbackError } from "../shared/auth-redirect";
 import { authGuidance } from "../shared/auth-guidance";
 
@@ -73,6 +81,9 @@ const initialPasswordRecovery = isPasswordRecoveryRedirect();
 
 import { Button, Modal, Confirm, ErrorBox, RecordForm, cn } from "./ui";
 import { ViewBoundary } from "./ViewBoundary";
+import { ProjectSearch } from "./ProjectSearch";
+import { CuteScrollbars } from "./CuteScrollbars";
+import sidebarBunny from "./assets/dashboard/project-peeking-bunny.webp";
 
 const TodayView = lazy(() =>
   import("./views").then((m) => ({ default: m.TodayView })),
@@ -86,8 +97,8 @@ const PipelineView = lazy(() =>
 const InboxView = lazy(() =>
   import("./views").then((m) => ({ default: m.InboxView })),
 );
-const ReportsView = lazy(() =>
-  import("./views").then((m) => ({ default: m.ReportsView })),
+const InsightsView = lazy(() =>
+  import("./views").then((m) => ({ default: m.InsightsView })),
 );
 const SettingsView = lazy(() =>
   import("./views").then((m) => ({ default: m.SettingsView })),
@@ -114,6 +125,8 @@ export type Page =
   | "pipeline"
   | "inbox"
   | "work"
+  | "insights"
+  | "analytics"
   | "reports"
   | "money"
   | "knowledge"
@@ -146,16 +159,16 @@ export function useCRM() {
 }
 
 const navigation = [
-  { page: "today", label: "Today", icon: House },
+  { page: "today", label: "Dashboard", icon: House },
   { page: "people", label: "People", icon: Users },
   { page: "pipeline", label: "Pipeline", icon: Kanban },
   { page: "inbox", label: "Inbox", icon: Tray },
   { page: "work", label: "Work", icon: CheckSquare },
-  { page: "reports", label: "Reports", icon: ChartBar },
+  { page: "insights", label: "Insights", icon: ChartBar },
   { page: "money", label: "Money", icon: Wallet },
   { page: "knowledge", label: "Knowledge", icon: BookOpen },
   { page: "automation", label: "Automation", icon: Lightning },
-  { page: "settings", label: "Settings", icon: GearSix },
+  { page: "settings", label: "Settings", icon: SlidersHorizontal },
 ] as const;
 
 function Brand() {
@@ -762,7 +775,9 @@ export default function App() {
   );
   const [page, setPageState] = useState<Page>(() => {
     const requested = new URLSearchParams(location.search).get("view");
-    return navigation.some((item) => item.page === requested)
+    return navigation.some((item) => item.page === requested) ||
+      requested === "analytics" ||
+      requested === "reports"
       ? (requested as Page)
       : "today";
   });
@@ -774,10 +789,18 @@ export default function App() {
   const [editing, setEditing] = useState<CrmRecord | null>(null);
   const [selected, setSelected] = useState<CrmRecord | null>(null);
   const [notice, setNotice] = useState("");
-  const [search, setSearch] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [mobile, setMobile] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem("founder-sidebar-collapsed") === "1",
+  );
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [collapsedProjectOpen, setCollapsedProjectOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(
+    () => localStorage.getItem("founder-theme") === "dark" ? "dark" : "light",
+  );
   const [newProject, setNewProject] = useState(false);
+  const [manageProject, setManageProject] = useState(false);
   const [initialContact, setInitialContact] = useState("");
   const [formDirty, setFormDirty] = useState(false);
   const [discard, setDiscard] = useState(false);
@@ -795,6 +818,36 @@ export default function App() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [formDirty]);
+  useEffect(() => {
+    localStorage.setItem("founder-sidebar-collapsed", sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("founder-theme", theme);
+  }, [theme]);
+
+  function changeTheme(next: "light" | "dark", button: HTMLButtonElement) {
+    if (next === theme) return;
+    const apply = () => {
+      document.documentElement.dataset.theme = next;
+      flushSync(() => setTheme(next));
+    };
+    if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      apply();
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    const transition = document.startViewTransition(apply);
+    void transition.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration: 800, easing: "cubic-bezier(.65,0,.25,1)", pseudoElement: "::view-transition-new(root)" },
+      );
+    }).catch(() => {});
+  }
   useEffect(() => {
     if (notice) {
       const timer = setTimeout(() => setNotice(""), 5000);
@@ -880,6 +933,19 @@ export default function App() {
     return result;
   }
 
+  async function manageCurrentProject(targetProjectId: string, action: "update_project" | "delete_project", payload: Fields) {
+    const result = await mutate(session?.csrfToken || "", targetProjectId, action, payload);
+    if (action === "delete_project") {
+      const nextProjectId = String(result.nextProjectId || "");
+      setManageProject(false);
+      if (targetProjectId === projectId && nextProjectId) changeProject(nextProjectId);
+      else await refresh();
+    } else {
+      await refresh();
+      toast(result.message || "Project updated");
+    }
+  }
+
   function setPage(next: Page) {
     setPageState(next);
     const url = new URL(location.href);
@@ -887,7 +953,6 @@ export default function App() {
     history.pushState(null, "", url.pathname + url.search);
     window.scrollTo({ top: 0 });
     setMobile(false);
-    setSearchOpen(false);
   }
 
   function pageHref(next: Page) {
@@ -919,16 +984,6 @@ export default function App() {
     };
     window.addEventListener("popstate", back);
     return () => window.removeEventListener("popstate", back);
-  }, []);
-  useEffect(() => {
-    function keydown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault();
-        setSearchOpen(true);
-      }
-    }
-    window.addEventListener("keydown", keydown);
-    return () => window.removeEventListener("keydown", keydown);
   }, []);
 
   if (loading) return <Loading onRetry={() => void load()} />;
@@ -983,6 +1038,52 @@ export default function App() {
       r.kind === "task" &&
       !["done", "archived"].includes(r.status.toLowerCase()),
   ).length;
+  const now = new Date();
+  const overdue = records.filter(
+    (record) =>
+      ["task", "promise", "onboarding"].includes(record.kind) &&
+      !complete({ ...record, status: record.status }) &&
+      record.dueAt &&
+      new Date(record.dueAt) < now,
+  );
+  const pendingDrafts = records.filter(
+    (record) =>
+      record.kind === "draft" &&
+      ["draft", "needs review"].includes(
+        record.status.toLowerCase().replaceAll("_", " "),
+      ),
+  );
+  const unassignedOpportunities = records.filter(
+    (record) =>
+      record.kind === "opportunity" &&
+      !record.ownerId &&
+      record.status.toLowerCase() !== "lost",
+  );
+  const notifications = [
+    overdue.length && {
+      title: `${overdue.length} overdue ${overdue.length === 1 ? "commitment" : "commitments"}`,
+      detail: "Open Work to review due dates and owners.",
+      page: "work" as Page,
+      tone: "warning",
+    },
+    pendingDrafts.length && {
+      title: `${pendingDrafts.length} draft${pendingDrafts.length === 1 ? "" : "s"} awaiting review`,
+      detail: "Review each draft before any outbound action.",
+      page: "inbox" as Page,
+      tone: "reminder",
+    },
+    unassignedOpportunities.length && {
+      title: `${unassignedOpportunities.length} unassigned ${unassignedOpportunities.length === 1 ? "opportunity" : "opportunities"}`,
+      detail: "Assign an owner to keep pipeline follow-through clear.",
+      page: "pipeline" as Page,
+      tone: "warning",
+    },
+  ].filter(Boolean) as {
+    title: string;
+    detail: string;
+    page: Page;
+    tone: string;
+  }[];
 
   const context: CRMContext = {
     workspace,
@@ -1005,11 +1106,13 @@ export default function App() {
   };
 
   const titles: Record<Page, string> = {
-    today: "Today",
+    today: "Dashboard",
     people: "People",
     pipeline: "Pipeline",
     inbox: "Inbox",
     work: "Work",
+    insights: "Insights",
+    analytics: "Analytics",
     reports: "Reports",
     money: "Money",
     knowledge: "Knowledge",
@@ -1017,7 +1120,21 @@ export default function App() {
     settings: "Settings",
   };
 
-  const sidebarContent = (surface: string) => (
+  async function signOut() {
+    try {
+      await productionLogout();
+      await request("/api/auth/logout", {
+        method: "POST",
+        headers: { "X-CSRF-Token": session?.csrfToken || "" },
+      });
+      setSession(await getSession());
+      setWorkspace(null);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  }
+
+  const sidebarContent = (surface: string, collapsed = false) => (
     <>
       <a
         className="brand-link"
@@ -1030,46 +1147,100 @@ export default function App() {
       >
         <Brand />
       </a>
-      <div className="project-picker">
-        <span className="project-symbol">
-          {initials(project?.name || "Workspace")}
-        </span>
-        <div>
-          <label htmlFor={`project-switcher-${surface}`}>PROJECT</label>
-          <select
-            id={`project-switcher-${surface}`}
-            value={projectId}
-            onChange={(e) => changeProject(e.target.value)}
-          >
-            {workspace.projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {surface === "desktop" && (
         <button
-          className="icon-btn project-new"
-          aria-label="Create project"
-          onClick={() => {
-            setMobile(false);
-            setNewProject(true);
-          }}
+          className="icon-btn sidebar-toggle"
+          aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-expanded={!collapsed}
+          onClick={() => setSidebarCollapsed((value) => {
+            if (!value) setCollapsedProjectOpen(false);
+            return !value;
+          })}
         >
-          <Plus size={15} />
+          {collapsed ? <CaretRight size={18} weight="bold" /> : <CaretLeft size={18} weight="bold" />}
         </button>
+      )}
+      <div className={cn("project-picker", collapsed && "project-picker-collapsed")}>
+        {collapsed ? (
+          <>
+            <button
+              className="icon-btn collapsed-project-trigger"
+              aria-label="Open project menu"
+              aria-expanded={collapsedProjectOpen}
+              onClick={() => setCollapsedProjectOpen((open) => !open)}
+            >
+              <FolderOpen size={19} weight="fill" />
+            </button>
+            {collapsedProjectOpen && (
+              <section className="collapsed-project-menu" aria-label="Project menu">
+                <span>PROJECT</span>
+                <label className="sr-only" htmlFor={`collapsed-project-switcher-${surface}`}>Project</label>
+                <select
+                  id={`collapsed-project-switcher-${surface}`}
+                  value={projectId}
+                  onChange={(e) => {
+                    changeProject(e.target.value);
+                    setCollapsedProjectOpen(false);
+                  }}
+                >
+                  {workspace.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <button
+                  onClick={() => {
+                    setCollapsedProjectOpen(false);
+                    setNewProject(true);
+                  }}
+                >
+                  <Plus size={15} /> Add project
+                </button>
+                <button
+                  className="project-manage-action"
+                  onClick={() => {
+                    setCollapsedProjectOpen(false);
+                    setManageProject(true);
+                  }}
+                >
+                  <SlidersHorizontal size={15} /> Manage project
+                </button>
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            <img className="sidebar-project-mascot" src={sidebarBunny} alt="" width={86} height={86} />
+            <span className="project-symbol">
+              <FolderOpen size={21} weight="fill" />
+            </span>
+            <div>
+              <label htmlFor={`project-switcher-${surface}`}>PROJECT</label>
+              <span className="project-select-wrap">
+                <select
+                  id={`project-switcher-${surface}`}
+                  value={projectId}
+                  onChange={(e) => changeProject(e.target.value)}
+                >
+                  {workspace.projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <CaretDown size={13} weight="bold" aria-hidden="true" />
+              </span>
+            </div>
+            <button
+              className="icon-btn project-new"
+              aria-label="Create project"
+              onClick={() => {
+                setMobile(false);
+                setNewProject(true);
+              }}
+            >
+              <Plus size={15} />
+            </button>
+          </>
+        )}
       </div>
-      <button
-        className="sidebar-search"
-        onClick={() => {
-          setMobile(false);
-          setSearchOpen(true);
-        }}
-      >
-        <MagnifyingGlass size={17} />
-        <span>Search records</span>
-        <kbd>Ctrl K</kbd>
-      </button>
       <nav aria-label="Main navigation">
         {navigation.slice(0, 5).map((item, i) => (
           <div key={item.page}>
@@ -1077,6 +1248,8 @@ export default function App() {
 
             <a
               href={pageHref(item.page)}
+              data-page={item.page}
+              title={collapsed ? item.label : undefined}
               aria-current={page === item.page ? "page" : undefined}
               className={cn("nav-item", page === item.page && "nav-active")}
               onClick={(event) => {
@@ -1109,7 +1282,7 @@ export default function App() {
           className="nav-group"
           key={`${surface}-${navigation.slice(5).some((item) => item.page === page)}`}
           open={
-            navigation.slice(5).some((item) => item.page === page) || undefined
+            collapsed || navigation.slice(5).some((item) => item.page === page) || undefined
           }
         >
           <summary className="nav-group-toggle">
@@ -1120,6 +1293,8 @@ export default function App() {
               <a
                 key={item.page}
                 href={pageHref(item.page)}
+                data-page={item.page}
+                title={collapsed ? item.label : undefined}
                 aria-current={page === item.page ? "page" : undefined}
                 className={cn("nav-item", page === item.page && "nav-active")}
                 onClick={(event) => {
@@ -1145,47 +1320,37 @@ export default function App() {
           </div>
         </details>
       </nav>
-      <div className="sidebar-bottom">
-        <div className="profile">
-          <div className="avatar avatar-dark">
-            {initials(workspace.actor.name)}
-          </div>
-          <div>
-            <strong>{workspace.actor.name}</strong>
-            <span>{workspace.actor.role}</span>
-          </div>
-          <button
-            className="icon-btn"
-            aria-label="Sign out"
-            onClick={async () => {
-              try {
-                await productionLogout();
-                await request("/api/auth/logout", {
-                  method: "POST",
-                  headers: { "X-CSRF-Token": session.csrfToken || "" },
-                });
-                setSession(await getSession());
-                setWorkspace(null);
-              } catch (e) {
-                toast((e as Error).message);
-              }
-            }}
-          >
-            <SignOut size={18} />
-          </button>
-        </div>
+      <div className="sidebar-theme" aria-label="Colour theme">
+        <span className="sr-only">Colour theme</span>
+        <button
+          aria-label="Use light theme"
+          aria-pressed={theme === "light"}
+          onClick={(event) => changeTheme("light", event.currentTarget)}
+        >
+          <Sun size={16} weight="fill" />
+          <span>Light</span>
+        </button>
+        <button
+          aria-label="Use dark theme"
+          aria-pressed={theme === "dark"}
+          onClick={(event) => changeTheme("dark", event.currentTarget)}
+        >
+          <Moon size={16} weight="fill" />
+          <span>Dark</span>
+        </button>
       </div>
     </>
   );
 
   return (
     <Context.Provider value={context}>
-      <div className="app-shell">
+      <CuteScrollbars />
+      <div className={cn("app-shell", sidebarCollapsed && "sidebar-is-collapsed")}>
         <a href="#main" className="skip-link">
           Skip to main content
         </a>
-        <aside className="sidebar desktop-sidebar">
-          {sidebarContent("desktop")}
+        <aside className={cn("sidebar desktop-sidebar", sidebarCollapsed && "sidebar-collapsed")}>
+          {sidebarContent("desktop", sidebarCollapsed)}
         </aside>
         <Dialog.Root open={mobile} onOpenChange={setMobile}>
           <Dialog.Portal>
@@ -1218,15 +1383,15 @@ export default function App() {
               <span className="slash">/</span>
               <strong>{titles[page]}</strong>
             </div>
-            <button
-              className="topbar-search"
-              aria-label="Search this project"
-              onClick={() => setSearchOpen(true)}
-            >
-              <MagnifyingGlass size={16} />
-              <span>Search this project</span>
-              <kbd>Ctrl K</kbd>
-            </button>
+            <ProjectSearch
+              key={`${projectId}:${page}`}
+              records={workspace.records}
+              projectId={projectId}
+              members={workspace.members}
+              pages={navigation}
+              onRecord={setSelected}
+              onPage={(next) => setPage(next as Page)}
+            />
             <div className="topbar-right">
               <span className="workspace-private">
                 <span className="small-dot" />
@@ -1241,7 +1406,82 @@ export default function App() {
               >
                 <ArrowClockwise size={17} />
               </Button>
-              <div className="avatar">{initials(workspace.actor.name)}</div>
+              <div className="notification-menu">
+                <button
+                  className="icon-btn notification-trigger"
+                  aria-label="Open reminders and alerts"
+                  aria-expanded={notificationsOpen}
+                  onClick={() => {
+                    setNotificationsOpen((open) => !open);
+                    setProfileOpen(false);
+                  }}
+                >
+                  <Bell size={18} />
+                  {notifications.length > 0 && (
+                    <span className="notification-badge">{notifications.length}</span>
+                  )}
+                </button>
+                {notificationsOpen && (
+                  <section className="notification-popover" aria-label="Reminders and alerts">
+                    <header>
+                      <div>
+                        <span className="eyebrow">REMINDERS</span>
+                        <h2>Alerts to review</h2>
+                      </div>
+                      <button
+                        className="icon-btn"
+                        aria-label="Close reminders"
+                        onClick={() => setNotificationsOpen(false)}
+                      >
+                        <X size={15} />
+                      </button>
+                    </header>
+                    {notifications.length ? (
+                      notifications.map((notification) => (
+                        <button
+                          className={`notification-item notification-${notification.tone}`}
+                          key={notification.title}
+                          onClick={() => {
+                            setNotificationsOpen(false);
+                            setPage(notification.page);
+                          }}
+                        >
+                          <WarningCircle size={16} />
+                          <span>
+                            <strong>{notification.title}</strong>
+                            <small>{notification.detail}</small>
+                          </span>
+                          <ArrowRight size={15} />
+                        </button>
+                      ))
+                    ) : (
+                      <p className="notification-empty">No reminders or warnings right now.</p>
+                    )}
+                  </section>
+                )}
+              </div>
+              <div className="profile-menu">
+                <button
+                  className="avatar profile-trigger"
+                  aria-label="Open profile menu"
+                  aria-expanded={profileOpen}
+                  onClick={() => {
+                    setProfileOpen((open) => !open);
+                    setNotificationsOpen(false);
+                  }}
+                >
+                  {initials(workspace.actor.name)}
+                </button>
+                {profileOpen && (
+                  <section className="profile-popover" aria-label="Profile menu">
+                    <strong>{workspace.actor.name}</strong>
+                    <span>{workspace.actor.role}</span>
+                    <button onClick={() => void signOut()}>
+                      <SignOut size={16} /> Sign out
+                    </button>
+                  </section>
+                )}
+              </div>
             </div>
           </header>
           <main id="main" className="main-content" key={projectId}>
@@ -1264,8 +1504,12 @@ export default function App() {
                   <InboxView />
                 ) : page === "work" ? (
                   <WorkView />
+                ) : page === "insights" ? (
+                  <InsightsView />
+                ) : page === "analytics" ? (
+                  <InsightsView initialTab="analytics" />
                 ) : page === "reports" ? (
-                  <ReportsView />
+                  <InsightsView initialTab="reports" />
                 ) : page === "money" ? (
                   <MoneyView />
                 ) : page === "knowledge" ? (
@@ -1366,55 +1610,6 @@ export default function App() {
         </ViewBoundary>
       )}
       <Modal
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        title="Search your workspace"
-        description="Search contacts, opportunities, conversations, and work in the selected project."
-      >
-        <div className="modal-body">
-          <div className="search-input large-search">
-            <MagnifyingGlass size={20} />
-            <input
-              autoFocus
-              aria-label="Search all records"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, company, or detail…"
-            />
-          </div>
-          <div className="search-results">
-            {search.trim() ? (
-              records
-                .filter((r) =>
-                  `${r.title} ${JSON.stringify(r.data)}`
-                    .toLowerCase()
-                    .includes(search.toLowerCase()),
-                )
-                .slice(0, 30)
-                .map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => {
-                      setSelected(r);
-                      setSearchOpen(false);
-                    }}
-                  >
-                    <span className="record-kind">
-                      {modules[r.kind].singular}
-                    </span>
-                    <strong>{r.title}</strong>
-                    <ArrowRight size={17} />
-                  </button>
-                ))
-            ) : (
-              <p className="muted">
-                Search only includes this project’s records.
-              </p>
-            )}
-          </div>
-        </div>
-      </Modal>
-      <Modal
         open={newProject}
         onClose={() => setNewProject(false)}
         title="Create project"
@@ -1428,6 +1623,23 @@ export default function App() {
             setNewProject(false);
           }}
         />
+      </Modal>
+      <Modal
+        open={manageProject}
+        onClose={() => setManageProject(false)}
+        title="Manage project"
+        description="Update its details or permanently delete this project and its records."
+      >
+        {project && (
+          <ProjectManager
+            key={project.id}
+            project={project}
+            projects={workspace.projects}
+            onClose={() => setManageProject(false)}
+            onSave={(id, payload) => manageCurrentProject(id, "update_project", payload)}
+            onDelete={(id, payload) => manageCurrentProject(id, "delete_project", payload)}
+          />
+        )}
       </Modal>
     </Context.Provider>
   );
@@ -1487,6 +1699,93 @@ function ProjectForm({
           {busy ? "Creating…" : "Create project"}
           <ArrowRight size={16} />
         </Button>
+      </div>
+    </form>
+  );
+}
+
+function ProjectManager({
+  project: initialProject,
+  projects,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  project: Project;
+  projects: Project[];
+  onSave: (id: string, payload: Fields) => Promise<void>;
+  onDelete: (id: string, payload: Fields) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [selectedProjectId, setSelectedProjectId] = useState(initialProject.id);
+  const project = projects.find((item) => item.id === selectedProjectId) || initialProject;
+  const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description);
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState<"save" | "delete" | null>(null);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy("save");
+    try {
+      await onSave(project.id, { name, description });
+      onClose();
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function remove() {
+    setError("");
+    setBusy("delete");
+    try {
+      await onDelete(project.id, { confirmation });
+    } catch (failure) {
+      setError((failure as Error).message);
+      setBusy(null);
+    }
+  }
+  return (
+    <form onSubmit={save}>
+      <div className="modal-body project-manager">
+        <ErrorBox error={error} />
+        <div className="field">
+          <label htmlFor="manage-project-select">Select project to manage</label>
+          <select id="manage-project-select" value={project.id} disabled={busy !== null} onChange={(event) => {
+            const selected = projects.find((item) => item.id === event.target.value);
+            if (!selected) return;
+            setSelectedProjectId(selected.id);
+            setName(selected.name);
+            setDescription(selected.description);
+            setConfirmation("");
+            setError("");
+          }}>
+            {projects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="manage-project-name">Project name</label>
+          <input id="manage-project-name" required value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label htmlFor="manage-project-description">Project description</label>
+          <textarea id="manage-project-description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <section className="project-danger-zone">
+          <strong>Delete this project</strong>
+          <p>This permanently deletes its records, activity, connections, shares, and project tokens.</p>
+          <label htmlFor="delete-project-confirmation">Type <b>{project.name}</b> to confirm</label>
+          <input id="delete-project-confirmation" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" />
+          <Button type="button" tone="danger" disabled={busy !== null || confirmation !== project.name} onClick={() => void remove()}>
+            {busy === "delete" ? "Deleting…" : "Delete project"}
+          </Button>
+        </section>
+      </div>
+      <div className="form-footer">
+        <Button type="button" onClick={onClose} disabled={busy !== null}>Cancel</Button>
+        <Button tone="primary" disabled={busy !== null || !name.trim()}>{busy === "save" ? "Saving…" : "Save changes"}</Button>
       </div>
     </form>
   );
